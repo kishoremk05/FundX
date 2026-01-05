@@ -1,29 +1,37 @@
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+
 const TeamSection = () => {
+  const { ref, isVisible } = useScrollAnimation(); // Retriggerable
+
   const leaders = [
     {
       title: "CEO",
       role: "Chief Executive Officer",
       description: "Leading KEP Microcredit's vision to provide accessible financial services and empower entrepreneurs.",
-      image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=500&fit=crop",
+      image: "/team-ceo.jpg",
     },
     {
       title: "Managing Director",
       role: "Managing Director",
       description: "Overseeing daily operations and strategic initiatives to ensure excellent service delivery.",
-      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=500&fit=crop",
+      image: "/team-md.jpg",
     },
     {
       title: "Head of HR",
       role: "Head of Human Resources",
       description: "Building and nurturing a talented team committed to exceptional customer service.",
-      image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=500&fit=crop",
+      image: "/team-hr.jpg",
     },
   ];
 
   return (
     <section className="section-padding bg-background">
       <div className="container-custom">
-        <div className="text-center mb-12">
+        <div
+          ref={ref}
+          className={`text-center mb-12 transition-all duration-700 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
+        >
           <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-3">
             Our Leadership Team
           </h2>

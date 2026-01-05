@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import TopBar from "@/components/layout/TopBar";
 import Header from "@/components/layout/Header";
 import HeroSlider from "@/components/sections/HeroSlider";
@@ -13,8 +14,13 @@ import ContactSection from "@/components/sections/ContactSection";
 import Footer from "@/components/layout/Footer";
 
 const Index = () => {
+  // Scroll to top on component mount (page load/refresh)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={{ scrollBehavior: 'smooth' }}>
       <TopBar />
       <Header />
       <main>

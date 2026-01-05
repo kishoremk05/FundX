@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import { Clock, Shield, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const HeroSection = () => {
+  const { ref, isVisible } = useScrollAnimation(true); // Trigger once for hero
+
   const features = [
     { icon: Clock, title: "24 Hour", subtitle: "Fast Processing" },
     { icon: Shield, title: "Licensed", subtitle: "BOT Regulated" },
@@ -14,7 +17,11 @@ const HeroSection = () => {
       <div className="container-custom">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
-          <div className="animate-slide-up">
+          <div
+            ref={ref}
+            className={`transition-all duration-700 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`}
+          >
             <span className="badge-lime mb-6">
               Licensed by Bank of Tanzania • MSP2-0976
             </span>

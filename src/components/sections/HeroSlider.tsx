@@ -3,19 +3,19 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const slides = [
   {
-    image: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=1920&h=800&fit=crop",
-    title: "Professional Financial Consultation",
-    subtitle: "Expert guidance for your financial needs",
+    image: "/slider-1.jpg",
+    title: "Professional Financial Services",
+    subtitle: "Dedicated support from our experienced team",
   },
   {
-    image: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1920&h=800&fit=crop",
-    title: "Your Trusted Partner in Microfinance",
-    subtitle: "Fast loan processing within 24 hours",
+    image: "/slider-2.jpg",
+    title: "Collaborative Excellence",
+    subtitle: "Working together to achieve your financial goals",
   },
   {
-    image: "https://images.unsplash.com/photo-1553729459-uj9tktm?w=1920&h=800&fit=crop",
-    title: "Business Growth Solutions",
-    subtitle: "Empowering entrepreneurs across Tanzania",
+    image: "/slider-3.jpg",
+    title: "Personalized Consultation",
+    subtitle: "Expert guidance tailored to your business needs",
   },
 ];
 
@@ -44,30 +44,29 @@ const HeroSlider = () => {
       <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden rounded-2xl md:rounded-3xl">
         {/* Slides */}
         {slides.map((slide, index) => (
-        <div
-          key={index}
-          className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-            index === currentSlide ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <img
-            src={slide.image}
-            alt={slide.title}
-            className="w-full h-full object-cover"
-          />
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          
-          {/* Content */}
-          <div className="absolute bottom-12 md:bottom-16 left-6 md:left-12 lg:left-16 max-w-2xl">
-            <h2 className="font-heading text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-2 md:mb-4">
-              {slide.title}
-            </h2>
-            <p className="text-white/90 text-sm md:text-lg">
-              {slide.subtitle}
-            </p>
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${index === currentSlide ? "opacity-100" : "opacity-0"
+              }`}
+          >
+            <img
+              src={slide.image}
+              alt={slide.title}
+              className="w-full h-full object-cover"
+            />
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+            {/* Content */}
+            <div className="absolute bottom-12 md:bottom-16 left-6 md:left-12 lg:left-16 max-w-2xl">
+              <h2 className="font-heading text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-2 md:mb-4">
+                {slide.title}
+              </h2>
+              <p className="text-white/90 text-sm md:text-lg">
+                {slide.subtitle}
+              </p>
+            </div>
           </div>
-        </div>
         ))}
 
         {/* Navigation Arrows */}
@@ -92,11 +91,10 @@ const HeroSlider = () => {
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full transition-colors ${
-                index === currentSlide
+              className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full transition-colors ${index === currentSlide
                   ? "bg-lime"
                   : "bg-white/50 hover:bg-white/70"
-              }`}
+                }`}
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}
