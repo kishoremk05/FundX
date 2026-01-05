@@ -60,8 +60,8 @@ const HeroSection = () => {
           <div className="relative animate-fade-in">
             <div className="relative rounded-2xl overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&h=600&fit=crop"
-                alt="Professional team meeting"
+                src="/hero-image.jpg"
+                alt="KEP Microcredit team meeting"
                 className="w-full h-auto rounded-2xl"
               />
               {/* Stats Overlay */}
