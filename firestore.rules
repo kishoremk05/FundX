@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- User Profiles ---
+    // Allow users to read, create, and update their own profile
+    match /profiles/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // --- Loan Products ---
+    // Allow authenticated users to read loan products
+    match /loan_products/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null; // Allow authenticated users to write (for seeding data)
+    }
+
+    // --- Loan Applications ---
+    match /loan_applications/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // --- Loans ---
+    match /loans/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // --- Repayment Schedules ---
+    match /repayment_schedules/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // --- Repayments ---
+    match /repayments/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // --- Contact Inquiries ---
+    match /contact_inquiries/{document=**} {
+      allow create: if true;
+      allow read, write: if request.auth != null;
+    }
+    
+    // --- Default Deny ---
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
