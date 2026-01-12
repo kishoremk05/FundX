@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Shield } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -29,17 +29,20 @@ export default function Login() {
       const { error } = await signIn(email, password);
 
       if (error) {
-        setError(error.message || 'Invalid email or password');
+        setError('Invalid credentials');
         setLoading(false);
       } else {
-        // If there's a specific return url, use it
-        // Otherwise do nothing and let AuthGuard handle the redirect based on role
+        // Redirect will be handled by AuthGuard when profile loads
+        // Just keep loading state - AuthGuard will redirect when ready
         if (from) {
           navigate(from, { replace: true });
+        } else {
+          // Navigate to customer by default - AuthGuard will handle proper routing
+          navigate('/customer', { replace: true });
         }
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      setError('Invalid credentials');
       setLoading(false);
     }
   };
@@ -122,6 +125,28 @@ export default function Login() {
                 Back to home
               </Link>
             </div>
+
+            {/* Admin Login Divider */}
+            <div className="relative w-full">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
+            {/* Admin Login Button */}
+            <Link to="/admin/login" className="w-full">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-primary/30 text-primary hover:bg-primary/10 dark:text-primary-foreground dark:border-primary-foreground/30"
+              >
+                <Shield className="mr-2 h-4 w-4" />
+                Admin Login
+              </Button>
+            </Link>
           </CardFooter>
         </form>
       </Card>

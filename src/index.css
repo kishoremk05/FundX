@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 210 40% 98%;
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
@@ -15,98 +15,83 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 231 75% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 220 60% 97%;
+    --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 220 40% 96%;
+    --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 78 100% 49%;
+    --accent: 210 40% 96%;
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 220 20% 90%;
-    --input: 220 20% 90%;
-    --ring: 231 75% 60%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 222 47% 11%;
 
     --radius: 0.75rem;
 
-    /* Custom tokens */
-    --kep-blue: 231 75% 60%;
-    --kep-blue-dark: 231 75% 45%;
-    --kep-lime: 78 100% 49%;
-    --kep-lime-light: 78 100% 90%;
-    --kep-navy: 222 47% 11%;
-    --kep-gray: 220 20% 96%;
-    --kep-gray-medium: 220 10% 85%;
-    --kep-text: 215 16% 47%;
-    --kep-light-blue: 220 60% 97%;
+    /* Status colors */
+    --status-active: 217 91% 60%;
+    --status-pending: 45 93% 47%;
+    --status-paid: 142 71% 45%;
+    --status-overdue: 0 84% 60%;
 
-    /* Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(231 75% 60%) 0%, hsl(231 75% 50%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(78 100% 49%) 0%, hsl(78 100% 45%) 100%);
-    
-    /* Shadows */
-    --shadow-card: 0 4px 20px -4px hsl(231 75% 60% / 0.1);
-    --shadow-card-hover: 0 8px 30px -4px hsl(231 75% 60% / 0.15);
-    --shadow-button: 0 4px 14px 0 hsl(231 75% 60% / 0.3);
-
-    /* Font families */
     --font-heading: 'Playfair Display', serif;
     --font-body: 'Inter', sans-serif;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Brand variables */
+    --kep-blue: 217 91% 60%;
+    --kep-blue-dark: 217 91% 45%;
+    --kep-lime: 85 100% 41%;
+    --kep-lime-light: 85 100% 95%;
+    --kep-navy: 222 47% 11%;
+    --kep-gray: 210 40% 96%;
+    --kep-gray-medium: 215 16% 47%;
+    --kep-light-blue: 210 40% 98%;
+
+    --shadow-card: 0 2px 12px -2px rgba(0, 0, 0, 0.05);
+    --shadow-card-hover: 0 8px 24px -4px rgba(0, 0, 0, 0.1);
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 0 0% 98%;
+    --background: 222 47% 4%;
+    --foreground: 210 40% 98%;
 
-    --card: 222 47% 8%;
-    --card-foreground: 0 0% 98%;
+    --card: 222 47% 6%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 8%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 222 47% 6%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 231 75% 65%;
+    --primary: 217 91% 60%;
     --primary-foreground: 222 47% 11%;
 
-    --secondary: 222 47% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 222 47% 12%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 222 47% 15%;
+    --muted: 222 47% 12%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 78 100% 49%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 222 47% 12%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 222 47% 15%;
-    --input: 222 47% 15%;
-    --ring: 231 75% 65%;
+    --border: 222 47% 12%;
+    --input: 222 47% 12%;
+    --ring: 212 27% 83%;
 
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Brand variables in Dark Mode */
+    --kep-blue: 217 91% 65%;
+    --kep-navy: 222 47% 4%;
+    --kep-light-blue: 222 47% 12%;
   }
 }
 
@@ -124,7 +109,12 @@
     font-family: var(--font-body);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-heading);
   }
 }
@@ -194,6 +184,7 @@
     from {
       opacity: 0;
     }
+
     to {
       opacity: 1;
     }
@@ -204,6 +195,7 @@
       opacity: 0;
       transform: translateY(20px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);

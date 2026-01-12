@@ -1,0 +1,93 @@
+{
+    "common": {
+        "save": "Hifadhi",
+        "cancel": "Ghairi",
+        "delete": "Futa",
+        "edit": "Hariri",
+        "add": "Ongeza",
+        "search": "Tafuta",
+        "loading": "Inapakia...",
+        "noResults": "Hakuna matokeo",
+        "confirm": "Thibitisha",
+        "back": "Rudi",
+        "next": "Endelea",
+        "submit": "Wasilisha",
+        "close": "Funga",
+        "yes": "Ndiyo",
+        "no": "Hapana",
+        "active": "Inafanya kazi",
+        "inactive": "Haifanyi kazi",
+        "pending": "Inasubiri",
+        "approved": "Imekubaliwa",
+        "rejected": "Imekataliwa",
+        "all": "Zote",
+        "status": "Hali",
+        "actions": "Vitendo",
+        "date": "Tarehe",
+        "amount": "Kiasi",
+        "description": "Maelezo",
+        "name": "Jina",
+        "email": "Barua pepe",
+        "phone": "Simu",
+        "address": "Anwani",
+        "settings": "Mipangilio"
+    },
+    "auth": {
+        "login": "Ingia",
+        "logout": "Ondoka",
+        "register": "Jisajili",
+        "forgotPassword": "Umesahau Nenosiri",
+        "resetPassword": "Weka Nenosiri Upya",
+        "email": "Barua pepe",
+        "password": "Nenosiri",
+        "confirmPassword": "Thibitisha Nenosiri",
+        "rememberMe": "Nikumbuke",
+        "noAccount": "Huna akaunti?",
+        "hasAccount": "Una akaunti tayari?",
+        "signUp": "Jisajili",
+        "signIn": "Ingia",
+        "fullName": "Jina Kamili"
+    },
+    "nav": {
+        "dashboard": "Dashibodi",
+        "applications": "Maombi",
+        "loans": "Mikopo Inayofanya kazi",
+        "customers": "Wateja",
+        "repayments": "Malipo",
+        "products": "Bidhaa za Mkopo",
+        "users": "Watumiaji",
+        "branches": "Matawi",
+        "accounts": "Akaunti",
+        "transactions": "Miamala",
+        "expenses": "Gharama",
+        "contacts": "Mawasiliano",
+        "settings": "Mipangilio",
+        "finance": "Fedha",
+        "communication": "Mawasiliano",
+        "subscriptions": "Usajili"
+    },
+    "dashboard": {
+        "title": "Dashibodi",
+        "subtitle": "Muhtasari wa mfumo wa usimamizi wa mikopo",
+        "totalLoans": "Jumla ya Mikopo",
+        "activeLoans": "Mikopo Inayofanya kazi",
+        "totalCustomers": "Jumla ya Wateja",
+        "pendingApplications": "Maombi Yanayosubiri",
+        "totalDisbursed": "Jumla Iliyotolewa",
+        "totalRepayments": "Jumla ya Malipo",
+        "overduePayments": "Malipo Yaliyochelewa",
+        "recentApplications": "Maombi ya Hivi Karibuni"
+    },
+    "landing": {
+        "hero": {
+            "title": "Karibu FundX",
+            "subtitle": "Mshirika wako wa kuaminika kwa suluhisho za fedha ndogo"
+        },
+        "cta": {
+            "getStarted": "Anza Sasa",
+            "learnMore": "Jifunze Zaidi",
+            "applyNow": "Omba Sasa",
+            "contactUs": "Wasiliana Nasi"
+        }
+    }
+}

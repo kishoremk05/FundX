@@ -1,0 +1,111 @@
+{
+    "common": {
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "delete": "حذف",
+        "edit": "تحرير",
+        "add": "إضافة",
+        "search": "بحث",
+        "loading": "جار التحميل...",
+        "noResults": "لا توجد نتائج",
+        "confirm": "تأكيد",
+        "back": "رجوع",
+        "next": "التالي",
+        "submit": "إرسال",
+        "close": "إغلاق",
+        "yes": "نعم",
+        "no": "لا",
+        "active": "نشط",
+        "inactive": "غير نشط",
+        "pending": "قيد الانتظار",
+        "approved": "موافق عليه",
+        "rejected": "مرفوض",
+        "all": "الكل",
+        "status": "الحالة",
+        "actions": "الإجراءات",
+        "date": "التاريخ",
+        "amount": "المبلغ",
+        "description": "الوصف",
+        "name": "الاسم",
+        "email": "البريد الإلكتروني",
+        "phone": "الهاتف",
+        "address": "العنوان",
+        "settings": "الإعدادات"
+    },
+    "auth": {
+        "login": "تسجيل الدخول",
+        "logout": "تسجيل الخروج",
+        "register": "التسجيل",
+        "forgotPassword": "نسيت كلمة المرور",
+        "resetPassword": "إعادة تعيين كلمة المرور",
+        "email": "البريد الإلكتروني",
+        "password": "كلمة المرور",
+        "confirmPassword": "تأكيد كلمة المرور",
+        "rememberMe": "تذكرني",
+        "noAccount": "ليس لديك حساب؟",
+        "hasAccount": "لديك حساب بالفعل؟",
+        "signUp": "إنشاء حساب",
+        "signIn": "تسجيل الدخول",
+        "fullName": "الاسم الكامل"
+    },
+    "nav": {
+        "dashboard": "لوحة التحكم",
+        "applications": "الطلبات",
+        "loans": "القروض النشطة",
+        "customers": "العملاء",
+        "repayments": "السداد",
+        "products": "منتجات القروض",
+        "users": "المستخدمين",
+        "branches": "الفروع",
+        "accounts": "الحسابات",
+        "transactions": "المعاملات",
+        "expenses": "المصروفات",
+        "contacts": "جهات الاتصال",
+        "settings": "الإعدادات",
+        "finance": "المالية",
+        "communication": "التواصل",
+        "subscriptions": "الاشتراكات"
+    },
+    "dashboard": {
+        "title": "لوحة التحكم",
+        "subtitle": "نظرة عامة على نظام إدارة القروض",
+        "totalLoans": "إجمالي القروض",
+        "activeLoans": "القروض النشطة",
+        "totalCustomers": "إجمالي العملاء",
+        "pendingApplications": "الطلبات المعلقة",
+        "totalDisbursed": "إجمالي المصروف",
+        "totalRepayments": "إجمالي السداد",
+        "overduePayments": "المدفوعات المتأخرة",
+        "recentApplications": "أحدث الطلبات"
+    },
+    "settings": {
+        "company": {
+            "title": "إعدادات الشركة",
+            "subtitle": "تكوين تفاصيل مؤسستك"
+        },
+        "application": {
+            "title": "إعدادات التطبيق",
+            "subtitle": "تكوين سلوك التطبيق"
+        },
+        "email": {
+            "title": "إعدادات البريد الإلكتروني",
+            "subtitle": "تكوين تسليم البريد الإلكتروني"
+        },
+        "security": {
+            "title": "إعدادات الأمان",
+            "subtitle": "تكوين خيارات الأمان"
+        }
+    },
+    "landing": {
+        "hero": {
+            "title": "مرحباً بكم في FundX",
+            "subtitle": "شريكك الموثوق لحلول التمويل الأصغر"
+        },
+        "cta": {
+            "getStarted": "ابدأ الآن",
+            "learnMore": "اعرف المزيد",
+            "applyNow": "قدم الآن",
+            "contactUs": "اتصل بنا"
+        }
+    }
+}

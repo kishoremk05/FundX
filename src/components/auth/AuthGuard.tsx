@@ -26,8 +26,16 @@ export function AuthGuard({ children, requireAuth = true, requiredRole }: AuthGu
   }
 
   if (!requireAuth && user) {
-    // Redirect authenticated users away from auth pages
-    const redirectTo = profile?.role === 'admin' ? '/admin' : '/customer';
+    // Wait for profile to load before redirecting
+    if (!profile && !profileError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+    // Redirect authenticated users away from auth pages based on their role
+    const redirectTo = profile?.role === 'admin' || profile?.role === 'loan_officer' ? '/admin' : '/customer';
     return <Navigate to={redirectTo} replace />;
   }
 
@@ -43,6 +51,11 @@ export function AuthGuard({ children, requireAuth = true, requiredRole }: AuthGu
 
     // Special case: loan_officer can access admin routes
     if (requiredRole === 'admin' && profile?.role === 'loan_officer') {
+      return <>{children}</>;
+    }
+
+    // Special case: admin can also access customer routes (for testing)
+    if (requiredRole === 'customer' && profile?.role === 'admin') {
       return <>{children}</>;
     }
 

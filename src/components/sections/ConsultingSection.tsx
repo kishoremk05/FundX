@@ -26,7 +26,7 @@ const ConsultingSection = () => {
   ];
 
   return (
-    <section id="consulting" className="section-padding bg-kep-gray">
+    <section id="consulting" className="section-padding bg-muted/30 transition-colors duration-300 border-y border-border">
       <div className="container-custom">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
           <div>

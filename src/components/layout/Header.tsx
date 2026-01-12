@@ -54,18 +54,18 @@ const Header = () => {
           </div>
 
           {/* Right Nav */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-4 lg:gap-6 ml-auto">
             {mainNavItems.map((item) => (
               <a
                 key={item.label}
                 href={item.href}
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors whitespace-nowrap"
               >
                 {item.label}
               </a>
             ))}
-            <Link to="/register">
-              <Button variant="nav-cta" size="lg">
+            <Link to="/register" className="shrink-0">
+              <Button variant="nav-cta" size="sm" className="lg:h-10 lg:px-6">
                 Apply Now
               </Button>
             </Link>

@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SettingsProvider } from "@/contexts/SettingsContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 
 // Pages
@@ -12,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
+import AdminLogin from "./pages/auth/AdminLogin";
 import DebugFirebase from "./pages/DebugFirebase";
 import SeedData from "./pages/SeedData";
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -22,72 +25,86 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Index />} />
+      <SettingsProvider>
+        <LanguageProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Index />} />
 
-            {/* Auth Routes */}
-            <Route
-              path="/login"
-              element={
-                <AuthGuard requireAuth={false}>
-                  <Login />
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/register"
-              element={
-                <AuthGuard requireAuth={false}>
-                  <Register />
-                </AuthGuard>
-              }
-            />
+                {/* Auth Routes */}
+                <Route
+                  path="/login"
+                  element={
+                    <AuthGuard requireAuth={false}>
+                      <Login />
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/register"
+                  element={
+                    <AuthGuard requireAuth={false}>
+                      <Register />
+                    </AuthGuard>
+                  }
+                />
 
-            <Route
-              path="/forgot-password"
-              element={
-                <AuthGuard requireAuth={false}>
-                  <ForgotPassword />
-                </AuthGuard>
-              }
-            />
+                <Route
+                  path="/forgot-password"
+                  element={
+                    <AuthGuard requireAuth={false}>
+                      <ForgotPassword />
+                    </AuthGuard>
+                  }
+                />
 
-            {/* Admin Routes */}
-            <Route
-              path="/admin/*"
-              element={
-                <AuthGuard requiredRole="admin">
-                  <AdminDashboard />
-                </AuthGuard>
-              }
-            />
+                {/* Admin Login - Separate route */}
+                <Route
+                  path="/admin/login"
+                  element={
+                    <AuthGuard requireAuth={false}>
+                      <AdminLogin />
+                    </AuthGuard>
+                  }
+                />
 
-            {/* Customer Routes */}
-            <Route
-              path="/customer/*"
-              element={
-                <AuthGuard requiredRole="customer">
-                  <CustomerDashboard />
-                </AuthGuard>
-              }
-            />
+                {/* Admin Routes */}
+                <Route
+                  path="/admin/*"
+                  element={
+                    <AuthGuard requiredRole="admin">
+                      <AdminDashboard />
+                    </AuthGuard>
+                  }
+                />
 
-            {/* Debug Route */}
-            <Route path="/debug" element={<DebugFirebase />} />
+                {/* Customer Routes */}
+                <Route
+                  path="/customer/*"
+                  element={
+                    <AuthGuard requiredRole="customer">
+                      <CustomerDashboard />
+                    </AuthGuard>
+                  }
+                />
 
-            {/* Seed Data Route */}
-            <Route path="/seed-data" element={<SeedData />} />
+                {/* Debug Route */}
+                <Route path="/debug" element={<DebugFirebase />} />
 
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+                {/* Seed Data Route */}
+                <Route path="/seed-data" element={<SeedData />} />
+
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </LanguageProvider>
+      </SettingsProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
