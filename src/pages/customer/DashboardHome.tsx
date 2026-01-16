@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,9 @@ import {
   CreditCard,
   Check,
   Quote,
+  Upload,
+  File,
+  Info,
 } from 'lucide-react';
 
 // Application form steps
@@ -131,6 +135,8 @@ export default function DashboardHome() {
   // Form state
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [applicationRef, setApplicationRef] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     fullName: profile?.full_name || '',
@@ -139,15 +145,20 @@ export default function DashboardHome() {
     idNumber: '',
     birthDate: '',
     address: '',
+    employmentStatus: '',
     employer: '',
     jobTitle: '',
     monthlyIncome: '',
-    employmentYears: '',
+    loanAmount: '500000',
+    durationMonths: '6',
     loanPurpose: '',
   });
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // FAQ state
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [faqSearch, setFaqSearch] = useState('');
 
   // Testimonial state
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -199,6 +210,168 @@ export default function DashboardHome() {
   };
 
   const handleNextStep = () => {
+    // Validation patterns
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^(\+255|0)?[67]\d{8}$/;
+    const nameRegex = /^[a-zA-Z\s]{2,50}$/;
+    const idRegex = /^[a-zA-Z0-9\-]{5,20}$/;
+
+    // Validate Step 1: Personal Info
+    if (currentStep === 1) {
+      // Check all fields are filled
+      const required = ['fullName', 'email', 'phone', 'birthDate', 'idNumber', 'address'];
+      const missing = required.filter(f => !formData[f as keyof typeof formData]);
+      if (missing.length > 0) {
+        toast({
+          title: 'Taarifa Zinakosekana',
+          description: 'Tafadhali jaza sehemu zote zenye alama (*)',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate name (letters only)
+      if (!nameRegex.test(formData.fullName)) {
+        toast({
+          title: 'Jina Lisilo Sahihi',
+          description: 'Jina linapaswa kuwa na herufi tu, bila nambari',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate email format
+      if (!emailRegex.test(formData.email)) {
+        toast({
+          title: 'Barua Pepe Isiyo Sahihi',
+          description: 'Tafadhali ingiza anwani sahihi ya barua pepe (mfano: jina@example.com)',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate phone (Tanzania format)
+      if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
+        toast({
+          title: 'Nambari ya Simu Isiyo Sahihi',
+          description: 'Ingiza nambari sahihi ya Tanzania (mfano: +255712345678 au 0712345678)',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate ID number (alphanumeric)
+      if (!idRegex.test(formData.idNumber)) {
+        toast({
+          title: 'Nambari ya Kitambulisho Isiyo Sahihi',
+          description: 'Nambari ya NIDA/Passport inapaswa kuwa na herufi 5-20',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate birth date (must be at least 18 years old)
+      const birthDate = new Date(formData.birthDate);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      if (age < 18 || age > 100) {
+        toast({
+          title: 'Umri Usiofaa',
+          description: 'Lazima uwe na umri wa miaka 18 au zaidi',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate address (minimum length)
+      if (formData.address.length < 5) {
+        toast({
+          title: 'Anwani Fupi Sana',
+          description: 'Tafadhali ingiza anwani kamili',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    // Validate Step 2: Employment Info
+    if (currentStep === 2) {
+      const required = ['employmentStatus', 'employer', 'jobTitle', 'monthlyIncome'];
+      const missing = required.filter(f => !formData[f as keyof typeof formData]);
+      if (missing.length > 0) {
+        toast({
+          title: 'Taarifa Zinakosekana',
+          description: 'Tafadhali jaza sehemu zote zenye alama (*)',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate employer name (letters only)
+      if (formData.employer.length < 2) {
+        toast({
+          title: 'Jina la Mwajiri Fupi Sana',
+          description: 'Tafadhali ingiza jina kamili la mwajiri/biashara',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate monthly income (numbers only, minimum 50,000)
+      const income = parseInt(formData.monthlyIncome.replace(/[^0-9]/g, ''));
+      if (isNaN(income) || income < 50000) {
+        toast({
+          title: 'Mapato Yasiyofaa',
+          description: 'Mapato yanapaswa kuwa angalau TZS 50,000 na nambari tu',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    // Validate Step 3: Loan Details
+    if (currentStep === 3) {
+      const required = ['loanAmount', 'durationMonths', 'loanPurpose'];
+      const missing = required.filter(f => !formData[f as keyof typeof formData]);
+      if (missing.length > 0) {
+        toast({
+          title: 'Taarifa Zinakosekana',
+          description: 'Tafadhali jaza sehemu zote zenye alama (*)',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate loan amount (numbers only, min 100,000, max 50,000,000)
+      const amount = parseInt(formData.loanAmount.replace(/[^0-9]/g, ''));
+      if (isNaN(amount) || amount < 100000) {
+        toast({
+          title: 'Kiasi cha Mkopo Kisichofaa',
+          description: 'Kiasi cha chini ni TZS 100,000',
+          variant: 'destructive'
+        });
+        return;
+      }
+      if (amount > 50000000) {
+        toast({
+          title: 'Kiasi cha Mkopo Kimezidi',
+          description: 'Kiasi cha juu ni TZS 50,000,000',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate loan purpose (minimum 10 characters)
+      if (formData.loanPurpose.length < 10) {
+        toast({
+          title: 'Madhumuni Fupi Sana',
+          description: 'Tafadhali eleza zaidi jinsi utakavyotumia mkopo (angalau maneno 10)',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
     if (currentStep < 4) {
       setCurrentStep(prev => prev + 1);
     }
@@ -218,37 +391,68 @@ export default function DashboardHome() {
 
     setIsSubmitting(true);
     try {
+      // Upload documents to Firebase Storage
+      const documentUrls: Record<string, string> = {};
+
+      for (const file of uploadedFiles) {
+        const storageRef = ref(storage, `loan_documents/${user.uid}/${Date.now()}_${file.name}`);
+        const uploadResult = await uploadBytes(storageRef, file);
+        const downloadUrl = await getDownloadURL(uploadResult.ref);
+        documentUrls[file.name] = downloadUrl;
+      }
+
+      // Calculate loan details
+      const loanAmountValue = parseFloat(formData.loanAmount) || 500000;
+      const durationValue = parseInt(formData.durationMonths) || 6;
+      const rate = 0.15 / 12; // 15% annual rate, monthly
+      const calculatedMonthlyPayment = (loanAmountValue * rate * Math.pow(1 + rate, durationValue)) / (Math.pow(1 + rate, durationValue) - 1);
+      const calculatedTotalRepayment = calculatedMonthlyPayment * durationValue;
+
       await addDoc(collection(db, 'loan_applications'), {
         customer_id: user.uid,
-        ...formData,
-        amount: loanAmount,
-        duration: loanDuration,
-        monthly_payment: Math.round(monthlyPayment),
-        total_repayment: Math.round(totalRepayment),
-        interest_rate: interestRate * 100,
+
+        // Personal Info
+        full_name: formData.fullName,
+        phone: formData.phone,
+        email: formData.email,
+        id_number: formData.idNumber,
+        birth_date: formData.birthDate,
+        address: formData.address,
+
+        // Employment Info
+        employment_status: formData.employmentStatus,
+        employer_name: formData.employer,
+        job_title: formData.jobTitle,
+        monthly_income: parseFloat(formData.monthlyIncome) || 0,
+
+        // Loan Details
+        amount: loanAmountValue,
+        duration_months: durationValue,
+        purpose: formData.loanPurpose,
+        monthly_payment: Math.round(calculatedMonthlyPayment),
+        total_repayment: Math.round(calculatedTotalRepayment),
+        interest_rate: 15,
+
+        // Documents
+        documents: documentUrls,
+
+        // Metadata
         status: 'pending',
+        applied_at: new Date().toISOString(),
         created_at: serverTimestamp(),
       });
+
+      // Generate reference number (KEP2026XXXXXXXXX format)
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const randomPart = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+      const refNumber = `KEP2026${randomPart}`;
+      setApplicationRef(refNumber);
+
+      setIsSubmitted(true);
 
       toast({
         title: 'Ombi Limepokelewa!',
         description: 'Tutawasiliana nawe ndani ya saa 24.',
-      });
-
-      setShowForm(false);
-      setCurrentStep(1);
-      setFormData({
-        fullName: profile?.full_name || '',
-        phone: '',
-        email: profile?.email || '',
-        idNumber: '',
-        birthDate: '',
-        address: '',
-        employer: '',
-        jobTitle: '',
-        monthlyIncome: '',
-        employmentYears: '',
-        loanPurpose: '',
       });
     } catch (error: any) {
       toast({
@@ -659,6 +863,112 @@ export default function DashboardHome() {
         </div>
       </section>
 
+      {/* Fomu ya Ombi la Mkopo - Application Form Section */}
+      <section id="apply-form" className="py-16 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">Fomu ya Ombi la Mkopo</h2>
+            <p className="text-gray-600 mt-2">Jaza taarifa zako hapa usajilifu. Fomu inabadilishwa kiotomatiki</p>
+          </div>
+
+          <Card className="shadow-lg">
+            <CardContent className="p-8">
+              {/* Taarifa Binafsi Header */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 text-blue-600 mb-2">
+                  <Badge className="bg-blue-600 text-white text-xs">Hatua 1 / 4</Badge>
+                  <span className="text-sm text-gray-500">Taarifa binafsi</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-blue-600" />
+                  Taarifa Binafsi
+                </h3>
+              </div>
+
+              {/* Form Fields */}
+              <div className="space-y-6">
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Jina Kamili *</Label>
+                  <Input
+                    placeholder="Jina alonazo"
+                    value={formData.fullName}
+                    onChange={(e) => handleInputChange('fullName', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Nambari ya Simu *</Label>
+                    <Input
+                      placeholder="+255712345678"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Barua Pepe *</Label>
+                    <Input
+                      type="email"
+                      placeholder="email@example.com"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Nambari ya Kitambulisho *</Label>
+                    <Input
+                      placeholder="NIDA/Passport"
+                      value={formData.idNumber}
+                      onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Tarehe ya Kuzaliwa *</Label>
+                    <Input
+                      type="date"
+                      placeholder="dd_mm_yyyy"
+                      value={formData.birthDate}
+                      onChange={(e) => handleInputChange('birthDate', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Anwani *</Label>
+                  <textarea
+                    placeholder="Andika yako kamili"
+                    value={formData.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg"
+                  onClick={() => setShowForm(true)}
+                >
+                  Endelea →
+                </Button>
+
+                <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-1">
+                  <FileText className="w-3 h-3" />
+                  Mtikio wa Ustahiki Baadaye
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       {/* Loan Application Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -673,25 +983,52 @@ export default function DashboardHome() {
               </div>
 
               {/* Stepper */}
-              <div className="flex items-center justify-between mb-8 relative">
-                <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200"></div>
-                {FORM_STEPS.map((step, idx) => (
-                  <div key={step.id} className="flex flex-col items-center relative z-10">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${currentStep > step.id
-                      ? 'bg-green-500 text-white'
-                      : currentStep === step.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-500'
-                      }`}>
-                      {currentStep > step.id ? <Check className="w-5 h-5" /> : step.id}
+              <div className="mb-8">
+                <div className="flex items-center justify-between relative">
+                  {/* Background progress line */}
+                  <div className="absolute top-5 left-[12.5%] right-[12.5%] h-1 bg-gray-200 rounded-full"></div>
+                  {/* Filled progress line */}
+                  <div
+                    className="absolute top-5 left-[12.5%] h-1 bg-green-500 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.max(0, (currentStep - 1) * 25)}%` }}
+                  ></div>
+
+                  {FORM_STEPS.map((step, idx) => (
+                    <div key={step.id} className="flex flex-col items-center relative z-10 flex-1">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 ${currentStep > step.id
+                        ? 'bg-green-500 border-green-500 text-white'
+                        : currentStep === step.id
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-400'
+                        }`}>
+                        {currentStep > step.id ? <Check className="w-5 h-5" /> : step.id}
+                      </div>
+                      <p className={`text-xs mt-2 font-semibold text-center ${currentStep > step.id
+                        ? 'text-green-600'
+                        : currentStep === step.id
+                          ? 'text-blue-600'
+                          : 'text-gray-400'
+                        }`}>
+                        {step.name}
+                      </p>
+                      <p className={`text-[10px] text-center ${currentStep >= step.id ? 'text-gray-500' : 'text-gray-300'
+                        }`}>
+                        {step.englishName}
+                      </p>
                     </div>
-                    <p className={`text-xs mt-2 font-medium ${currentStep >= step.id ? 'text-blue-600' : 'text-gray-400'}`}>
-                      {step.name}
-                    </p>
+                  ))}
+                </div>
+
+                {/* Maendeleo Progress - Below steps */}
+                <div className="flex justify-end items-center gap-3 mt-4">
+                  <span className="text-xs text-gray-600 font-medium">Maendeleo</span>
+                  <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 rounded-full transition-all duration-300"
+                      style={{ width: `${currentStep * 25}%` }}
+                    ></div>
                   </div>
-                ))}
-                <div className="absolute right-0 top-0 text-xs text-gray-500">
-                  Mwendelezo: <span className="font-bold text-blue-600">{getCompletionPercentage()}%</span>
+                  <span className="text-sm font-bold text-green-600">{currentStep * 25}%</span>
                 </div>
               </div>
 
@@ -725,9 +1062,15 @@ export default function DashboardHome() {
                     <div>
                       <Label>Nambari ya Simu *</Label>
                       <Input
+                        type="tel"
                         placeholder="+255712345678"
+                        pattern="[0-9+]*"
                         value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        onChange={(e) => {
+                          // Only allow numbers and + sign
+                          const value = e.target.value.replace(/[^0-9+]/g, '');
+                          handleInputChange('phone', value);
+                        }}
                       />
                     </div>
                     <div>
@@ -767,11 +1110,25 @@ export default function DashboardHome() {
                   </h3>
                   <p className="text-sm text-gray-500 mb-6">Hatua 2 ya 4 - Maelezo ya ajira</p>
 
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
-                      <Label>Jina la Mwajiri *</Label>
+                      <Label>Hali ya Ajira *</Label>
+                      <select
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formData.employmentStatus}
+                        onChange={(e) => handleInputChange('employmentStatus', e.target.value)}
+                      >
+                        <option value="">Chagua hali ya ajira</option>
+                        <option value="employed">Mwajiriwa</option>
+                        <option value="self_employed">Mwajiri Binafsi</option>
+                        <option value="business_owner">Mmiliki wa Biashara</option>
+                        <option value="freelancer">Freelancer</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label>Jina la Mwajiri/Biashara *</Label>
                       <Input
-                        placeholder="Kampuni/Biashara"
+                        placeholder="Jina la kampuni au biashara"
                         value={formData.employer}
                         onChange={(e) => handleInputChange('employer', e.target.value)}
                       />
@@ -779,7 +1136,7 @@ export default function DashboardHome() {
                     <div>
                       <Label>Cheo cha Kazi *</Label>
                       <Input
-                        placeholder="Nafasi yako"
+                        placeholder="Cheo chako cha kazi"
                         value={formData.jobTitle}
                         onChange={(e) => handleInputChange('jobTitle', e.target.value)}
                       />
@@ -788,18 +1145,14 @@ export default function DashboardHome() {
                       <Label>Mapato ya Kila Mwezi (TZS) *</Label>
                       <Input
                         type="number"
+                        min="50000"
                         placeholder="500000"
                         value={formData.monthlyIncome}
-                        onChange={(e) => handleInputChange('monthlyIncome', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Miaka ya Kufanya Kazi *</Label>
-                      <Input
-                        type="number"
-                        placeholder="2"
-                        value={formData.employmentYears}
-                        onChange={(e) => handleInputChange('employmentYears', e.target.value)}
+                        onChange={(e) => {
+                          // Only allow numbers
+                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          handleInputChange('monthlyIncome', value);
+                        }}
                       />
                     </div>
                   </div>
@@ -815,62 +1168,201 @@ export default function DashboardHome() {
                   </h3>
                   <p className="text-sm text-gray-500 mb-6">Hatua 3 ya 4 - Taarifa za mkopo</p>
 
-                  <div className="bg-blue-50 rounded-xl p-4 mb-6">
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
-                        <p className="text-sm text-gray-600">Kiasi</p>
-                        <p className="text-lg font-bold text-blue-600">{formatCurrency(loanAmount)} TZS</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Muda</p>
-                        <p className="text-lg font-bold text-blue-600">{loanDuration} Miezi</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Malipo/Mwezi</p>
-                        <p className="text-lg font-bold text-green-600">{formatCurrency(monthlyPayment)} TZS</p>
-                      </div>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Kiasi cha Mkopo (TZS) *</Label>
+                      <Input
+                        type="number"
+                        min="100000"
+                        max="50000000"
+                        placeholder="500000"
+                        value={formData.loanAmount}
+                        onChange={(e) => {
+                          // Only allow numbers
+                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          handleInputChange('loanAmount', value);
+                        }}
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Kiasi: TZS 100,000 - 50,000,000</p>
                     </div>
-                  </div>
-
-                  <div>
-                    <Label>Sababu ya Mkopo *</Label>
-                    <textarea
-                      className="w-full p-3 border rounded-lg min-h-[100px]"
-                      placeholder="Eleza sababu ya kuomba mkopo huu..."
-                      value={formData.loanPurpose}
-                      onChange={(e) => handleInputChange('loanPurpose', e.target.value)}
-                    />
+                    <div>
+                      <Label>Muda wa Kulipa *</Label>
+                      <select
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formData.durationMonths}
+                        onChange={(e) => handleInputChange('durationMonths', e.target.value)}
+                      >
+                        <option value="">Chagua muda</option>
+                        <option value="3">3 miezi</option>
+                        <option value="6">6 miezi</option>
+                        <option value="12">12 miezi</option>
+                        <option value="18">18 miezi</option>
+                        <option value="24">24 miezi</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label>Madhumuni ya Mkopo *</Label>
+                      <textarea
+                        className="w-full p-3 border border-gray-300 rounded-lg min-h-[120px] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        placeholder="Eleza jinsi utakavyotumia mkopo huu"
+                        value={formData.loanPurpose}
+                        onChange={(e) => handleInputChange('loanPurpose', e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Step 4: Verification */}
+              {/* Step 4: Document Verification / Confirmation */}
               {currentStep === 4 && (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Shield className="w-5 h-5 text-blue-600" />
-                    Uthibiti
+                    Uhakiki wa Hati
                   </h3>
-                  <p className="text-sm text-gray-500 mb-6">Hatua 4 ya 4 - Thibitisha na wasilisha</p>
+                  <p className="text-sm text-gray-500 mb-6">Hatua 4 ya 4 - Pakia hati zinazohitajika</p>
 
-                  <div className="bg-gray-50 rounded-xl p-6 space-y-4">
-                    <h4 className="font-semibold text-gray-900">Muhtasari wa Ombi</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div><span className="text-gray-500">Jina:</span> <span className="font-medium">{formData.fullName}</span></div>
-                      <div><span className="text-gray-500">Simu:</span> <span className="font-medium">{formData.phone}</span></div>
-                      <div><span className="text-gray-500">Kiasi:</span> <span className="font-medium">{formatCurrency(loanAmount)} TZS</span></div>
-                      <div><span className="text-gray-500">Muda:</span> <span className="font-medium">{loanDuration} Miezi</span></div>
-                      <div><span className="text-gray-500">Malipo/Mwezi:</span> <span className="font-medium text-green-600">{formatCurrency(monthlyPayment)} TZS</span></div>
-                      <div><span className="text-gray-500">Riba:</span> <span className="font-medium">15% p.a.</span></div>
+                  {/* Show confirmation screen after submission */}
+                  {isSubmitted ? (
+                    <div className="space-y-6">
+                      {/* Success Message */}
+                      <div className="text-center py-6">
+                        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Check className="w-10 h-10 text-white" />
+                        </div>
+                        <h4 className="text-xl font-bold text-gray-900 mb-2">Ombi Limewasilishwa!</h4>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Ombi lako limepokelewa kwa mafanikio. Nambari yako ya kumbukumbu ni:
+                        </p>
+                        <p className="text-lg font-bold text-blue-600">{applicationRef}</p>
+                      </div>
+
+                      {/* Uploaded Files */}
+                      <div className="space-y-3">
+                        <p className="text-sm font-semibold text-gray-700">Faili Zilizopakiwa ({uploadedFiles.length})</p>
+                        {uploadedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                            <div className="flex items-center gap-3">
+                              <File className="w-5 h-5 text-gray-400" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-700">{file.name}</p>
+                                <p className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Status Info */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                          <span>M'chakato wa uhakiki utachukua hadi siku 1</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                          <span>Utapokea SMS na barua pepe kuhasu masambazio</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                          <Phone className="w-5 h-5 text-green-500" />
+                          <span>Wasiliana nasi kwa maswali yoyote: +255 123 456 789</span>
+                        </div>
+                      </div>
+
+                      {/* Maliza Button */}
+                      <Button
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 text-lg font-semibold"
+                        onClick={() => {
+                          setShowForm(false);
+                          setCurrentStep(1);
+                          setIsSubmitted(false);
+                          setApplicationRef('');
+                          setFormData({
+                            fullName: profile?.full_name || '',
+                            phone: '',
+                            email: profile?.email || '',
+                            idNumber: '',
+                            birthDate: '',
+                            address: '',
+                            employmentStatus: '',
+                            employer: '',
+                            jobTitle: '',
+                            monthlyIncome: '',
+                            loanAmount: '500000',
+                            durationMonths: '6',
+                            loanPurpose: '',
+                          });
+                          setUploadedFiles([]);
+                        }}
+                      >
+                        Maliza
+                      </Button>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* Upload Area */}
+                      <div className="border-2 border-dashed border-blue-300 rounded-2xl p-8 text-center bg-blue-50/50">
+                        <Upload className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+                        <h4 className="font-semibold text-gray-900 mb-2">Pakia Hati</h4>
+                        <p className="text-sm text-gray-500 mb-4">Kitambulisho, Hati ya Mapato, au Picha ya Biashara</p>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={(e) => {
+                            if (e.target.files) {
+                              setUploadedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                            }
+                          }}
+                          className="hidden"
+                          multiple
+                          accept="image/*,.pdf"
+                        />
+                        <Button
+                          type="button"
+                          className="bg-blue-600 hover:bg-blue-700"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <File className="w-4 h-4 mr-2" />
+                          Chagua Faili
+                        </Button>
+                      </div>
 
-                  <div className="flex items-start gap-3 p-4 bg-green-50 rounded-xl">
-                    <input type="checkbox" className="mt-1" id="terms" />
-                    <label htmlFor="terms" className="text-sm text-gray-700">
-                      Ninakubali masharti na vigezo vya mkopo wa KEP Microcredit
-                    </label>
-                  </div>
+                      {/* Uploaded Files List */}
+                      {uploadedFiles.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-gray-700">Hati zilizopakiwa:</p>
+                          {uploadedFiles.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <File className="w-4 h-4 text-gray-500" />
+                                <span className="text-sm text-gray-700">{file.name}</span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== index))}
+                              >
+                                <XCircle className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Required Documents Info */}
+                      <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
+                        <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h5 className="font-semibold text-gray-900 mb-2">Hati Zinazohitajika</h5>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• Nakala ya Kitambulisho (NIDA au Passport)</li>
+                            <li>• Hati ya Mapato (Payslip au Bank Statement)</li>
+                            <li>• Picha ya Biashara (kwa wajiri binafsi)</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -1024,6 +1516,8 @@ export default function DashboardHome() {
               <input
                 type="text"
                 placeholder="Tafuta swali..."
+                value={faqSearch}
+                onChange={(e) => setFaqSearch(e.target.value)}
                 className="w-full px-4 py-3 pl-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1033,7 +1527,13 @@ export default function DashboardHome() {
           </div>
 
           <div className="space-y-4">
-            {FAQ_DATA.map((faq, idx) => (
+            {FAQ_DATA.filter(faq =>
+              faqSearch === '' ||
+              faq.question.toLowerCase().includes(faqSearch.toLowerCase()) ||
+              faq.questionEn.toLowerCase().includes(faqSearch.toLowerCase()) ||
+              faq.answer.toLowerCase().includes(faqSearch.toLowerCase()) ||
+              faq.answerEn.toLowerCase().includes(faqSearch.toLowerCase())
+            ).map((faq, idx) => (
               <Card key={idx} className={`overflow-hidden transition-all ${openFaq === idx ? 'ring-2 ring-blue-500' : ''}`}>
                 <button
                   className={`w-full p-4 text-left flex items-center justify-between transition-colors ${openFaq === idx ? 'bg-blue-600 text-white' : 'hover:bg-gray-50'}`}
@@ -1177,16 +1677,16 @@ export default function DashboardHome() {
       </section>
 
       {/* BOT License Banner */}
-      <section className="py-8 bg-green-50 border-y border-green-100">
+      <section className="py-8 bg-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <Check className="w-10 h-10 text-white" />
             </div>
             <div>
-              <h4 className="font-bold text-green-800">Imethibitishwa na Benki Kuu ya Tanzania</h4>
-              <p className="text-sm text-green-700">
-                KEP Microcredit Limited ni taasisi ya fedha <span className="font-semibold">iliyoidhinishwa</span> na kudhibitishwa na Benki Kuu ya Tanzania (BOT). <span className="font-semibold">Leseni Namba: MFI-2024-001</span>
+              <h4 className="text-xl font-bold text-gray-900">Imethibitishwa na Benki Kuu ya Tanzania</h4>
+              <p className="text-sm text-gray-600 mt-1">
+                KEP Microcredit Limited ni taasisi ya fedha <span className="text-blue-600 underline">iliyoidhinishwa</span> na <span className="text-blue-600 underline">kudhibitishwa</span> na Benki Kuu ya Tanzania (BOT). <span className="font-semibold">Leseni Namba: MFI-2024-001</span>
               </p>
             </div>
           </div>
@@ -1218,7 +1718,7 @@ export default function DashboardHome() {
       <div className="h-20" />
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
+      <footer className="bg-[#1e3a5f] text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             {/* Logo & Description */}
@@ -1235,14 +1735,14 @@ export default function DashboardHome() {
               <p className="text-sm text-gray-400 mb-4">
                 Tunakupa mikopo ya haraka na rahisi kwa wajiri wote kwa ada nafuu sana katika Tanzania.
               </p>
-              <div className="flex gap-3">
-                <a href="#" className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors">
+              <div className="flex gap-2">
+                <a href="#" className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center hover:bg-blue-700 transition-colors">
                   <span className="text-xs">&lt;</span>
                 </a>
-                <a href="#" className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors">
+                <a href="#" className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center hover:bg-blue-700 transition-colors">
                   <span className="text-xs">&lt;</span>
                 </a>
-                <a href="#" className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors">
+                <a href="#" className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center hover:bg-blue-700 transition-colors">
                   <span className="text-xs">&lt;</span>
                 </a>
               </div>

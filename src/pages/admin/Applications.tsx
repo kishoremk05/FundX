@@ -406,14 +406,16 @@ export default function Applications() {
                         <User className="w-3 h-3 opacity-60" /> Entity Identity
                       </Label>
                       <p className="text-xl font-black text-foreground tracking-tight truncate">
-                        {selectedApp.customer?.full_name || selectedApp.customer?.email}
+                        {(selectedApp as any).full_name || selectedApp.customer?.full_name || selectedApp.customer?.email}
                       </p>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-1.5 leading-none">
-                        <Briefcase className="w-3 h-3 opacity-60" /> Class Selection
+                        <Briefcase className="w-3 h-3 opacity-60" /> Employment Status
                       </Label>
-                      <p className="text-sm font-black text-foreground/70 uppercase tracking-widest">{selectedApp.product?.name}</p>
+                      <p className="text-sm font-black text-foreground/70 uppercase tracking-widest">
+                        {(selectedApp as any).employment_status || 'N/A'}
+                      </p>
                     </div>
                   </div>
 
@@ -433,15 +435,77 @@ export default function Applications() {
                   </div>
                 </div>
 
+                {/* Personal Information */}
+                <div className="space-y-4">
+                  <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                    <div className="w-1 h-3 bg-blue-500 rounded-full" /> Personal Information
+                  </Label>
+                  <div className="bg-muted/20 p-4 rounded-2xl grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">Phone:</span> <span className="font-bold">{(selectedApp as any).phone || 'N/A'}</span></div>
+                    <div><span className="text-muted-foreground">Email:</span> <span className="font-bold">{(selectedApp as any).email || 'N/A'}</span></div>
+                    <div><span className="text-muted-foreground">ID Number:</span> <span className="font-bold">{(selectedApp as any).id_number || 'N/A'}</span></div>
+                    <div><span className="text-muted-foreground">Birth Date:</span> <span className="font-bold">{(selectedApp as any).birth_date || 'N/A'}</span></div>
+                    <div className="col-span-2"><span className="text-muted-foreground">Address:</span> <span className="font-bold">{(selectedApp as any).address || 'N/A'}</span></div>
+                  </div>
+                </div>
+
+                {/* Employment Information */}
+                <div className="space-y-4">
+                  <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                    <div className="w-1 h-3 bg-green-500 rounded-full" /> Employment Details
+                  </Label>
+                  <div className="bg-muted/20 p-4 rounded-2xl grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">Status:</span> <span className="font-bold uppercase">{(selectedApp as any).employment_status || 'N/A'}</span></div>
+                    <div><span className="text-muted-foreground">Employer:</span> <span className="font-bold">{(selectedApp as any).employer_name || 'N/A'}</span></div>
+                    <div><span className="text-muted-foreground">Job Title:</span> <span className="font-bold">{(selectedApp as any).job_title || 'N/A'}</span></div>
+                    <div><span className="text-muted-foreground">Monthly Income:</span> <span className="font-bold">{formatCurrency((selectedApp as any).monthly_income || 0)}</span></div>
+                  </div>
+                </div>
+
+                {/* Loan Details */}
+                <div className="space-y-4">
+                  <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                    <div className="w-1 h-3 bg-amber-500 rounded-full" /> Loan Terms
+                  </Label>
+                  <div className="bg-muted/20 p-4 rounded-2xl grid grid-cols-3 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">Duration:</span> <span className="font-bold">{(selectedApp as any).duration_months || 'N/A'} months</span></div>
+                    <div><span className="text-muted-foreground">Monthly Payment:</span> <span className="font-bold text-green-600">{formatCurrency((selectedApp as any).monthly_payment || 0)}</span></div>
+                    <div><span className="text-muted-foreground">Interest Rate:</span> <span className="font-bold">{(selectedApp as any).interest_rate || 15}% p.a.</span></div>
+                  </div>
+                </div>
+
+                {/* Documents */}
+                {(selectedApp as any).documents && Object.keys((selectedApp as any).documents).length > 0 && (
+                  <div className="space-y-4">
+                    <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                      <div className="w-1 h-3 bg-violet-500 rounded-full" /> Uploaded Documents
+                    </Label>
+                    <div className="bg-muted/20 p-4 rounded-2xl space-y-2">
+                      {Object.entries((selectedApp as any).documents).map(([name, url]: [string, any]) => (
+                        <a
+                          key={name}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg transition-colors text-sm"
+                        >
+                          <FileText className="w-4 h-4 text-primary" />
+                          <span className="font-medium text-primary underline">{name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Purpose Statement */}
-                {selectedApp.purpose && (
+                {(selectedApp as any).purpose && (
                   <div className="space-y-4">
                     <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                       <div className="w-1 h-3 bg-primary rounded-full" /> Narrative Statement of Need
                     </Label>
                     <div className="bg-muted/20 p-6 rounded-2xl border-l-[6px] border-l-primary/20 text-sm leading-relaxed text-foreground/80 font-medium italic relative group">
                       <MessageSquare className="absolute -top-3 -right-3 w-8 h-8 text-primary/10 rotate-12 group-hover:scale-125 transition-transform" />
-                      "{selectedApp.purpose}"
+                      "{(selectedApp as any).purpose}"
                     </div>
                   </div>
                 )}
