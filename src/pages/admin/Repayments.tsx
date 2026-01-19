@@ -46,8 +46,8 @@ export default function Repayments() {
     filters: [{ field: 'role', operator: '==' as const, value: 'customer' }]
   }), []);
 
-  const { data: repayments = [], loading: repaymentsLoading } = useFirestore<Repayment>('repayments');
-  const { data: loans = [] } = useFirestore<Loan>('loans');
+  const { data: repayments = [], loading: repaymentsLoading, add: addRepayment } = useFirestore<Repayment>('repayments');
+  const { data: loans = [], update: updateLoan } = useFirestore<Loan>('loans');
   const { data: borrowers = [] } = useFirestore<Profile>('profiles', borrowerOptions);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,11 +102,36 @@ export default function Repayments() {
   const handleRecordPayment = async () => {
     if (!paymentForm.loan_id || !paymentForm.amount) return;
 
-    setIsSubmitting(true);
     try {
+      const amount = Number(paymentForm.amount);
+      const selectedLoan = loans.find(l => l.id === paymentForm.loan_id);
+
+      if (!selectedLoan) throw new Error('Loan not found');
+
+      // 1. Record the repayment
+      await addRepayment({
+        loan_id: paymentForm.loan_id,
+        amount: amount,
+        payment_method: paymentForm.payment_method,
+        reference: paymentForm.reference,
+        notes: paymentForm.notes,
+        paid_at: new Date().toISOString(),
+        status: 'completed'
+      } as Partial<Repayment>);
+
+      // 2. Update the loan balance
+      const currentBalance = selectedLoan.balance || 0;
+      const newBalance = Math.max(0, currentBalance - amount);
+      const newStatus = newBalance <= 0 ? 'paid' : selectedLoan.status;
+
+      await updateLoan(selectedLoan.id, {
+        balance: newBalance,
+        status: newStatus
+      });
+
       toast({
         title: 'Payment Recorded',
-        description: `Payment of ${formatCurrency(Number(paymentForm.amount))} has been recorded.`,
+        description: `Payment of ${formatCurrency(amount)} has been recorded and loan balance updated.`,
       });
       setIsRecordModalOpen(false);
       setPaymentForm({
@@ -117,6 +142,7 @@ export default function Repayments() {
         notes: '',
       });
     } catch (error: any) {
+      console.error('Error recording payment:', error);
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);

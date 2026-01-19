@@ -14,6 +14,7 @@ import Expenses from './Expenses';
 import Contacts from './Contacts';
 import Reports from './Reports';
 import Notes from './Notes';
+import LoanDetails from './LoanDetails';
 
 // Settings
 import CompanySettings from './settings/CompanySettings';
@@ -31,6 +32,7 @@ export default function Dashboard() {
         <Route index element={<DashboardHome />} />
         <Route path="applications" element={<Applications />} />
         <Route path="loans" element={<Loans />} />
+        <Route path="loans/:id" element={<LoanDetails />} />
         <Route path="borrowers" element={<Borrowers />} />
         <Route path="repayments" element={<Repayments />} />
         <Route path="products" element={<Products />} />

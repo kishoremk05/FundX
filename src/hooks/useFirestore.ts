@@ -59,7 +59,7 @@ export function useFirestore<T extends { id?: string }>(
 
     const {
         filters = [],
-        orderByField = 'created_at',
+        orderByField = null,
         orderDirection = 'desc',
         pageSize = 20
     } = options;

@@ -29,7 +29,7 @@ const Header = () => {
         <div className="flex items-center justify-between py-4">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <img src="/kep-logo.jpg" alt="KEP Microcredit" className="h-12 w-auto object-contain" />
+            <img src="/kep-logo.png" alt="KEP Microcredit" className="h-12 w-auto object-contain" />
             <div className="hidden sm:block">
               <h1 className="font-heading font-bold text-lg text-foreground">KEP Microcredit</h1>
               <p className="text-xs text-muted-foreground">The Lender of Your Next Hope</p>

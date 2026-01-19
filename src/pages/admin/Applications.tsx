@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, query, orderBy, getDocs, doc, updateDoc, writeBatch, where } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, updateDoc, writeBatch, where, onSnapshot } from 'firebase/firestore';
 import type { LoanApplication, Profile, LoanProduct } from '@/lib/database.types';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,7 +22,8 @@ import {
   Clock,
   AlertCircle,
   CheckCircle2,
-  Scale
+  Scale,
+  Download
 } from 'lucide-react';
 import {
   Table,
@@ -43,6 +44,13 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type ApplicationWithDetails = LoanApplication & {
   customer: Profile;
@@ -55,31 +63,26 @@ export default function Applications() {
   const [selectedApp, setSelectedApp] = useState<ApplicationWithDetails | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [reviewing, setReviewing] = useState(false);
+  const [allProducts, setAllProducts] = useState<LoanProduct[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
 
   useEffect(() => {
-    fetchApplications();
-  }, []);
+    const appsRef = collection(db, 'loan_applications');
+    const q = query(appsRef, orderBy('applied_at', 'desc'));
 
-  const fetchApplications = async () => {
-    try {
-      const appsRef = collection(db, 'loan_applications');
-      const q = query(appsRef, orderBy('applied_at', 'desc'));
-      const appsSnapshot = await getDocs(q);
-      const appsData = appsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as LoanApplication[];
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const appsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as LoanApplication[];
 
       // Manual join: Fetch customers and products
-      const customerIds = Array.from(new Set(appsData.map(a => a.customer_id)));
-      const productIds = Array.from(new Set(appsData.map(a => a.product_id)));
+      const customerIds = Array.from(new Set(appsData.map(a => a.customer_id).filter(Boolean)));
+      const productIds = Array.from(new Set(appsData.map(a => a.product_id).filter(Boolean)));
 
       const customersMap: Record<string, Profile> = {};
       const productsMap: Record<string, LoanProduct> = {};
 
       if (customerIds.length > 0) {
-        // Chunk fetching for customers
         const chunks = [];
-        for (let i = 0; i < customerIds.length; i += 10) {
-          chunks.push(customerIds.slice(i, i + 10));
-        }
+        for (let i = 0; i < customerIds.length; i += 10) chunks.push(customerIds.slice(i, i + 10));
         for (const chunk of chunks) {
           const qCustomers = query(collection(db, 'profiles'), where('id', 'in', chunk));
           const snap = await getDocs(qCustomers);
@@ -88,11 +91,8 @@ export default function Applications() {
       }
 
       if (productIds.length > 0) {
-        // Chunk fetching for products
         const chunks = [];
-        for (let i = 0; i < productIds.length; i += 10) {
-          chunks.push(productIds.slice(i, i + 10));
-        }
+        for (let i = 0; i < productIds.length; i += 10) chunks.push(productIds.slice(i, i + 10));
         for (const chunk of chunks) {
           const qProducts = query(collection(db, 'loan_products'), where('id', 'in', chunk));
           const snap = await getDocs(qProducts);
@@ -107,13 +107,23 @@ export default function Applications() {
       })) as ApplicationWithDetails[];
 
       setApplications(mergedData);
-    } catch (error) {
-      console.error('Error fetching applications:', error);
-      toast.error('Failed to load applications');
-    } finally {
       setLoading(false);
-    }
-  };
+    }, (error) => {
+      console.error('Error in applications listener:', error);
+      toast.error('Failed to sync applications');
+      setLoading(false);
+    });
+
+    // Fetch products once for selector
+    const fetchProducts = async () => {
+      const allProductsSnap = await getDocs(collection(db, 'loan_products'));
+      const allProductsList = allProductsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })) as LoanProduct[];
+      setAllProducts(allProductsList);
+    };
+    fetchProducts();
+
+    return () => unsubscribe();
+  }, []);
 
   const handleReview = async (status: 'approved' | 'rejected') => {
     if (!selectedApp) return;
@@ -127,17 +137,33 @@ export default function Applications() {
         reviewed_at: new Date().toISOString(),
         reviewer_id: auth.currentUser?.uid,
         notes: reviewNotes,
+        product_id: selectedProductId || selectedApp.product_id
       });
+
+      // If we assigned a new product, update the local object for createLoan
+      let appToAuthorize = selectedApp;
+      if (selectedProductId && selectedProductId !== selectedApp.product_id) {
+        const newProduct = allProducts.find(p => p.id === selectedProductId);
+        if (newProduct) {
+          appToAuthorize = {
+            ...selectedApp,
+            product_id: selectedProductId,
+            product: newProduct
+          };
+        }
+      }
 
       // If approved, create loan and repayment schedule
       if (status === 'approved') {
-        await createLoan(selectedApp);
+        if (!appToAuthorize.product_id || !appToAuthorize.product || appToAuthorize.product.name === 'Unknown Product') {
+          throw new Error('This application is missing product details. Please assign a valid loan product before approval.');
+        }
+        await createLoan(appToAuthorize);
       }
 
       toast.success(`Application assessment complete: ${status.toUpperCase()}`);
       setSelectedApp(null);
       setReviewNotes('');
-      fetchApplications();
     } catch (error) {
       console.error('Error reviewing application:', error);
       toast.error('Failed to synchronize review decision');
@@ -274,7 +300,7 @@ export default function Applications() {
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-muted/30 border border-border/50 rounded-xl">
             <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{applications.length} PENDING SUBMISSIONS</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{applications.filter(a => a.status === 'pending').length} PENDING SUBMISSIONS</span>
           </div>
         </div>
       </div>
@@ -374,8 +400,13 @@ export default function Applications() {
       </Card>
 
       {/* Assessment Terminal (Dialog) */}
-      <Dialog open={!!selectedApp} onOpenChange={() => setSelectedApp(null)}>
-        <DialogContent className="sm:max-w-[700px] bg-card border-border shadow-2xl p-0 overflow-hidden rounded-3xl">
+      <Dialog open={!!selectedApp} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedApp(null);
+          setSelectedProductId('');
+        }
+      }}>
+        <DialogContent className="sm:max-w-[1000px] bg-card border-border shadow-2xl p-0 overflow-hidden rounded-3xl">
           <div className="bg-primary/5 p-8 border-b border-border relative">
             <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none">
               <Scale className="w-24 h-24" />
@@ -386,142 +417,219 @@ export default function Applications() {
                   <ShieldCheck className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <DialogTitle className="text-3xl font-black tracking-tighter uppercase">Protocol Assessment</DialogTitle>
-                  <DialogDescription className="text-muted-foreground font-bold text-sm tracking-wide mt-1">
-                    Synchronizing institutional decision for facility ID: <span className="text-primary">#{selectedApp?.id.slice(-8).toUpperCase()}</span>
+                  <DialogTitle className="text-3xl font-black tracking-tighter uppercase leading-none">Protocol Assessment</DialogTitle>
+                  <DialogDescription className="text-muted-foreground font-bold text-sm tracking-wide mt-2">
+                    Synchronizing institutional decision for facility ID: <span className="text-primary tracking-widest">#{selectedApp?.id.slice(-8).toUpperCase()}</span>
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
           </div>
 
-          <div className="p-10 space-y-10">
+          <div className="p-10 space-y-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
             {selectedApp && (
-              <div className="space-y-10">
-                {/* Visual Summary Cards */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-muted/30 p-6 rounded-3xl border border-border/50 space-y-4">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-1.5 leading-none">
-                        <User className="w-3 h-3 opacity-60" /> Entity Identity
-                      </Label>
-                      <p className="text-xl font-black text-foreground tracking-tight truncate">
-                        {(selectedApp as any).full_name || selectedApp.customer?.full_name || selectedApp.customer?.email}
-                      </p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div className="space-y-10">
+                  {/* Visual Summary Cards */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="bg-muted/30 p-6 rounded-3xl border border-border/50 space-y-4">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-1.5 leading-none">
+                          <User className="w-3 h-3 opacity-60" /> Entity Identity
+                        </Label>
+                        <p className="text-xl font-black text-foreground tracking-tight truncate">
+                          {(selectedApp as any).full_name || selectedApp.customer?.full_name || selectedApp.customer?.email}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-1.5 leading-none">
+                          <Briefcase className="w-3 h-3 opacity-60" /> Employment Status
+                        </Label>
+                        <p className="text-sm font-black text-foreground/70 uppercase tracking-widest">
+                          {(selectedApp as any).employment_status || 'N/A'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-1.5 leading-none">
-                        <Briefcase className="w-3 h-3 opacity-60" /> Employment Status
-                      </Label>
-                      <p className="text-sm font-black text-foreground/70 uppercase tracking-widest">
-                        {(selectedApp as any).employment_status || 'N/A'}
-                      </p>
+
+                    <div className="bg-primary/5 p-6 rounded-3xl border border-primary/10 space-y-4">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase font-black tracking-widest text-primary/60 flex items-center gap-1.5 leading-none">
+                          <Banknote className="w-3 h-3 opacity-60" /> Exposure Demand
+                        </Label>
+                        <p className="text-3xl font-black text-primary tracking-tighter leading-none">
+                          {formatCurrency(parseFloat(selectedApp.amount as any))}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black uppercase text-primary/40 tracking-widest">CURRENT PHASE:</span>
+                        {getStatusBadge(selectedApp.status)}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="bg-primary/5 p-6 rounded-3xl border border-primary/10 space-y-4">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase font-black tracking-widest text-primary/60 flex items-center gap-1.5 leading-none">
-                        <Banknote className="w-3 h-3 opacity-60" /> Exposure Demand
-                      </Label>
-                      <p className="text-3xl font-black text-primary tracking-tighter leading-none">
-                        {formatCurrency(parseFloat(selectedApp.amount as any))}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-black uppercase text-primary/40 tracking-widest">CURRENT PHASE:</span>
-                      {getStatusBadge(selectedApp.status)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Personal Information */}
-                <div className="space-y-4">
-                  <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                    <div className="w-1 h-3 bg-blue-500 rounded-full" /> Personal Information
-                  </Label>
-                  <div className="bg-muted/20 p-4 rounded-2xl grid grid-cols-2 gap-3 text-sm">
-                    <div><span className="text-muted-foreground">Phone:</span> <span className="font-bold">{(selectedApp as any).phone || 'N/A'}</span></div>
-                    <div><span className="text-muted-foreground">Email:</span> <span className="font-bold">{(selectedApp as any).email || 'N/A'}</span></div>
-                    <div><span className="text-muted-foreground">ID Number:</span> <span className="font-bold">{(selectedApp as any).id_number || 'N/A'}</span></div>
-                    <div><span className="text-muted-foreground">Birth Date:</span> <span className="font-bold">{(selectedApp as any).birth_date || 'N/A'}</span></div>
-                    <div className="col-span-2"><span className="text-muted-foreground">Address:</span> <span className="font-bold">{(selectedApp as any).address || 'N/A'}</span></div>
-                  </div>
-                </div>
-
-                {/* Employment Information */}
-                <div className="space-y-4">
-                  <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                    <div className="w-1 h-3 bg-green-500 rounded-full" /> Employment Details
-                  </Label>
-                  <div className="bg-muted/20 p-4 rounded-2xl grid grid-cols-2 gap-3 text-sm">
-                    <div><span className="text-muted-foreground">Status:</span> <span className="font-bold uppercase">{(selectedApp as any).employment_status || 'N/A'}</span></div>
-                    <div><span className="text-muted-foreground">Employer:</span> <span className="font-bold">{(selectedApp as any).employer_name || 'N/A'}</span></div>
-                    <div><span className="text-muted-foreground">Job Title:</span> <span className="font-bold">{(selectedApp as any).job_title || 'N/A'}</span></div>
-                    <div><span className="text-muted-foreground">Monthly Income:</span> <span className="font-bold">{formatCurrency((selectedApp as any).monthly_income || 0)}</span></div>
-                  </div>
-                </div>
-
-                {/* Loan Details */}
-                <div className="space-y-4">
-                  <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                    <div className="w-1 h-3 bg-amber-500 rounded-full" /> Loan Terms
-                  </Label>
-                  <div className="bg-muted/20 p-4 rounded-2xl grid grid-cols-3 gap-3 text-sm">
-                    <div><span className="text-muted-foreground">Duration:</span> <span className="font-bold">{(selectedApp as any).duration_months || 'N/A'} months</span></div>
-                    <div><span className="text-muted-foreground">Monthly Payment:</span> <span className="font-bold text-green-600">{formatCurrency((selectedApp as any).monthly_payment || 0)}</span></div>
-                    <div><span className="text-muted-foreground">Interest Rate:</span> <span className="font-bold">{(selectedApp as any).interest_rate || 15}% p.a.</span></div>
-                  </div>
-                </div>
-
-                {/* Documents */}
-                {(selectedApp as any).documents && Object.keys((selectedApp as any).documents).length > 0 && (
+                  {/* Personal Information */}
                   <div className="space-y-4">
                     <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                      <div className="w-1 h-3 bg-violet-500 rounded-full" /> Uploaded Documents
+                      <div className="w-1 h-3 bg-blue-500 rounded-full" /> Personal Information
                     </Label>
-                    <div className="bg-muted/20 p-4 rounded-2xl space-y-2">
-                      {Object.entries((selectedApp as any).documents).map(([name, url]: [string, any]) => (
-                        <a
-                          key={name}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg transition-colors text-sm"
-                        >
-                          <FileText className="w-4 h-4 text-primary" />
-                          <span className="font-medium text-primary underline">{name}</span>
-                        </a>
-                      ))}
+                    <div className="bg-muted/20 p-6 rounded-2xl grid grid-cols-2 gap-6 text-sm">
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Phone</p>
+                        <p className="font-black tracking-wide">{(selectedApp as any).phone || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Email</p>
+                        <p className="font-black tracking-wide truncate">{(selectedApp as any).email || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">ID Number</p>
+                        <p className="font-black tracking-wide">{(selectedApp as any).id_number || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Birth Date</p>
+                        <p className="font-black tracking-wide">{(selectedApp as any).birth_date || 'N/A'}</p>
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Address</p>
+                        <p className="font-black tracking-wide">{(selectedApp as any).address || 'N/A'}</p>
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
 
-                {/* Purpose Statement */}
-                {(selectedApp as any).purpose && (
+                <div className="space-y-10">
+                  {/* Employment Information */}
                   <div className="space-y-4">
                     <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                      <div className="w-1 h-3 bg-primary rounded-full" /> Narrative Statement of Need
+                      <div className="w-1 h-3 bg-green-500 rounded-full" /> Employment Details
                     </Label>
-                    <div className="bg-muted/20 p-6 rounded-2xl border-l-[6px] border-l-primary/20 text-sm leading-relaxed text-foreground/80 font-medium italic relative group">
+                    <div className="bg-muted/20 p-6 rounded-2xl grid grid-cols-2 gap-6 text-sm">
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Status</p>
+                        <p className="font-black uppercase tracking-widest">{(selectedApp as any).employment_status || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Employer</p>
+                        <p className="font-black">{(selectedApp as any).employer_name || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Job Title</p>
+                        <p className="font-black">{(selectedApp as any).job_title || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Monthly Income</p>
+                        <p className="font-black text-primary">{formatCurrency((selectedApp as any).monthly_income || 0)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Loan Details */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2 shrink-0">
+                        <div className="w-1 h-3 bg-amber-500 rounded-full" /> Loan Terms
+                      </Label>
+
+                      {(selectedApp.product.name === 'Unknown Product' || !selectedApp.product_id) && (
+                        <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/20">
+                          <Label className="text-[9px] uppercase font-black text-primary leading-none shrink-0">Assign Product:</Label>
+                          <Select
+                            value={selectedProductId}
+                            onValueChange={(val) => {
+                              setSelectedProductId(val);
+                              const p = allProducts.find(prod => prod.id === val);
+                              if (p && selectedApp) setSelectedApp({ ...selectedApp, product: p });
+                            }}
+                          >
+                            <SelectTrigger className="h-7 w-[160px] text-[9px] font-black uppercase tracking-wider bg-background border-primary/20">
+                              <SelectValue placeholder="Select Product" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              {allProducts.map(p => (
+                                <SelectItem key={p.id} value={p.id} className="text-[10px] font-black uppercase tracking-wider">
+                                  {p.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-muted/20 p-6 rounded-2xl grid grid-cols-3 gap-6 text-sm">
+                      <div className="space-y-1 text-center border-r border-border/50">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Duration</p>
+                        <p className="font-black">{selectedApp.product?.term_months || (selectedApp as any).duration_months || 'N/A'} Months</p>
+                      </div>
+                      <div className="space-y-1 text-center border-r border-border/50">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Installment</p>
+                        <p className="font-black text-green-600">
+                          {formatCurrency(
+                            selectedApp.product?.interest_rate
+                              ? (parseFloat(selectedApp.amount as any) * (1 + (selectedApp.product.interest_rate / 100))) / (selectedApp.product.term_months || 1)
+                              : ((selectedApp as any).monthly_payment || 0)
+                          )}
+                        </p>
+                      </div>
+                      <div className="space-y-1 text-center">
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold">Interest</p>
+                        <p className="font-black">{selectedApp.product?.interest_rate || (selectedApp as any).interest_rate || 15}% p.a.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-10">
+                  {/* Documents */}
+                  {(selectedApp as any).documents && Object.keys((selectedApp as any).documents).length > 0 && (
+                    <div className="space-y-4">
+                      <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                        <div className="w-1 h-3 bg-violet-500 rounded-full" /> Evidence Repository
+                      </Label>
+                      <div className="bg-muted/20 p-4 rounded-2xl grid grid-cols-1 gap-2">
+                        {Object.entries((selectedApp as any).documents).map(([name, url]: [string, any]) => (
+                          <a
+                            key={name}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 bg-background/50 hover:bg-background rounded-xl border border-border/50 transition-all group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <FileText className="w-4 h-4 text-primary" />
+                              <span className="font-black text-[10px] uppercase tracking-widest text-foreground/70 group-hover:text-primary">{name}</span>
+                            </div>
+                            <Download className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Purpose Statement */}
+                  <div className="space-y-4">
+                    <Label className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                      <div className="w-1 h-3 bg-primary rounded-full" /> Narrative Statement
+                    </Label>
+                    <div className="bg-muted/20 p-6 rounded-2xl border-l-[6px] border-l-primary/20 text-sm leading-relaxed text-foreground/80 font-medium italic relative group h-full flex items-center">
                       <MessageSquare className="absolute -top-3 -right-3 w-8 h-8 text-primary/10 rotate-12 group-hover:scale-125 transition-transform" />
-                      "{(selectedApp as any).purpose}"
+                      "{(selectedApp as any).purpose || 'No narrative provided by applicant.'}"
                     </div>
                   </div>
-                )}
 
-                {/* Assessment Logging */}
-                <div className="space-y-4 pt-4">
-                  <Label htmlFor="notes" className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                    <div className="w-1 h-3 bg-foreground/20 rounded-full" /> Internal Underwriting Notes
-                  </Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Document institutional reasoning for authorization or denial of facility request..."
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    className="min-h-[160px] bg-muted/20 border-border focus:bg-background focus:ring-0 focus:border-primary transition-all rounded-2xl p-6 font-medium leading-relaxed resize-none"
-                  />
+                  {/* Assessment Logging */}
+                  <div className="lg:col-span-2 space-y-4 pt-4">
+                    <Label htmlFor="notes" className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                      <div className="w-1 h-3 bg-foreground/20 rounded-full" /> Internal Underwriting Protocol Notes
+                    </Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Document institutional reasoning for authorization or denial of facility request..."
+                      value={reviewNotes}
+                      onChange={(e) => setReviewNotes(e.target.value)}
+                      className="min-h-[140px] bg-muted/20 border-border focus:bg-background focus:ring-0 focus:border-primary transition-all rounded-2xl p-6 font-bold leading-relaxed resize-none text-sm"
+                    />
+                  </div>
                 </div>
               </div>
             )}

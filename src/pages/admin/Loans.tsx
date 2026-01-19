@@ -42,6 +42,7 @@ import {
   Download,
   Trash2,
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,10 +105,10 @@ export default function Loans() {
         customer_id: createForm.customer_id,
         principal_amount: principal,
         interest_rate: parseFloat(createForm.interest_rate),
-        duration_months: duration,
+        term_months: duration,
         status: 'active',
         balance: totalRepayment,
-        total_repayment: totalRepayment,
+        total_amount: totalRepayment,
         disbursed_at: new Date().toISOString(),
         loan_purpose: createForm.loan_purpose,
       } as Partial<Loan>);
@@ -170,17 +171,62 @@ export default function Loans() {
   };
 
   const handleExportPDF = (loan: Loan) => {
-    toast({
-      title: 'Exporting PDF',
-      description: `Generating loan agreement for L${loan.id.slice(-3).toUpperCase()}...`,
-    });
-    // In a real app, this would trigger a PDF generation service
-    setTimeout(() => {
-      toast({
-        title: 'Success',
-        description: 'PDF has been downloaded.',
-      });
-    }, 1500);
+    try {
+      const borrowerName = getBorrowerName(loan.customer_id);
+      const doc = new jsPDF();
+
+      // Header
+      doc.setFontSize(22);
+      doc.setTextColor(30, 41, 59); // slate-800
+      doc.text('KEP Microcredit', 20, 20);
+      doc.setFontSize(16);
+      doc.text('Loan Agreement', 20, 30);
+
+      // Line
+      doc.setDrawColor(203, 213, 225); // slate-300
+      doc.line(20, 35, 190, 35);
+
+      // Loan ID & Date
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139); // slate-500
+      doc.text(`Loan ID: L${loan.id.toUpperCase()}`, 20, 42);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 140, 42);
+
+      // Borrower Section
+      doc.setFontSize(14);
+      doc.setTextColor(30, 41, 59);
+      doc.text('BORROWER INFORMATION', 20, 55);
+      doc.setFontSize(11);
+      doc.text(`Full Name: ${borrowerName}`, 20, 65);
+      doc.text(`Customer ID: ${loan.customer_id}`, 20, 72);
+
+      // Loan Details
+      doc.setFontSize(14);
+      doc.text('LOAN TERMS', 20, 85);
+      doc.setFontSize(11);
+      doc.text(`Principal Amount: ${formatCurrency(loan.principal_amount)}`, 20, 95);
+      doc.text(`Interest Rate: ${loan.interest_rate}% p.a.`, 20, 102);
+      doc.text(`Duration: ${loan.term_months} Months`, 20, 109);
+      doc.text(`Total Repayment: ${formatCurrency(loan.total_amount)}`, 20, 116);
+      doc.text(`Disbursement Date: ${new Date(loan.disbursed_at).toLocaleDateString()}`, 20, 123);
+
+      // Current Status
+      doc.setFillColor(241, 245, 249);
+      doc.rect(20, 135, 170, 20, 'F');
+      doc.setTextColor(30, 41, 59);
+      doc.text(`Current Outstanding Balance: ${formatCurrency(loan.balance)}`, 25, 147);
+
+      // Footer
+      doc.setFontSize(9);
+      doc.setTextColor(148, 163, 184);
+      doc.text('This is a computer generated document and does not require a physical signature.', 20, 280);
+
+      doc.save(`LoanAgreement_${loan.id.slice(-5)}.pdf`);
+
+      toast({ title: 'Success', description: 'Loan agreement exported successfully.' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: 'Failed to generate PDF', variant: 'destructive' });
+    }
   };
 
   const handleDelete = async (id: string) => {

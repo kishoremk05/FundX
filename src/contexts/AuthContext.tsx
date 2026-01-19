@@ -72,6 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: 'customer',
           avatar_url: auth.currentUser?.photoURL || null,
           branch_id: null,
+          is_active: true,
+          two_factor_enabled: false,
+          two_factor_secret: null,
+          email_verified: false,
+          language: 'en',
+          theme: 'system',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -112,6 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: 'customer', // Default role
           avatar_url: null,
           branch_id: null,
+          is_active: true,
+          two_factor_enabled: false,
+          two_factor_secret: null,
+          email_verified: false,
+          language: 'en',
+          theme: 'system',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -139,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'Super_admin';
   const isCustomer = profile?.role === 'customer';
   const isLoanOfficer = profile?.role === 'loan_officer' || profile?.role === 'admin';
 

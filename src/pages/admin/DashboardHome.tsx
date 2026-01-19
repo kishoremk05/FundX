@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, getCountFromServer, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, getCountFromServer, orderBy, limit, doc, getDoc, updateDoc, addDoc, onSnapshot } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { useFirestore } from '@/hooks/useFirestore';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { jsPDF } from 'jspdf';
 import {
   Select,
   SelectContent,
@@ -177,17 +178,49 @@ export default function DashboardHome() {
     if (!selectedLoanId || !paymentForm.amount) return;
     setIsSubmitting(true);
     try {
-      // In a real app we'd fetch the loan first. Here we assume we have enough info or just update balance.
-      // For simplicity in the dashboard view, we'll just show the toast if we don't have the full loan object.
-      await updateLoan(selectedLoanId, {
-        // This is a partial update, backend should handle decrement or we fetch first
-        // Since we're in the dashboard, we might not have the full loan object easily.
-        // Let's just say it's recorded.
+      const amount = Number(paymentForm.amount);
+
+      // 1. Find the loan associated with this application
+      const loansRef = collection(db, 'loans');
+      const qLoan = query(loansRef, where('application_id', '==', selectedLoanId));
+      const loanSnap = await getDocs(qLoan);
+
+      if (loanSnap.empty) {
+        throw new Error('No disbursed loan found for this application. Please disburse the loan first.');
+      }
+
+      const loanDoc = loanSnap.docs[0];
+      const loanId = loanDoc.id;
+      const loanData = loanDoc.data() as Loan;
+
+      const currentBalance = loanData.balance || 0;
+      const newBalance = Math.max(0, currentBalance - amount);
+      const newStatus = newBalance <= 0 ? 'paid' : loanData.status;
+
+      // 2. Add repayment record
+      await addDoc(collection(db, 'repayments'), {
+        loan_id: loanId,
+        amount: amount,
+        payment_method: paymentForm.payment_method,
+        notes: paymentForm.notes,
+        paid_at: new Date().toISOString(),
+        status: 'completed',
+        recorded_by: 'admin'
       });
-      toast({ title: 'Success', description: 'Payment recorded successfully.' });
+
+      // 3. Update loan balance
+      await updateDoc(doc(db, 'loans', loanId), {
+        balance: newBalance,
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      });
+
+      toast({ title: 'Success', description: `Recorded payment of ${formatCurrency(amount)}.` });
       setIsPaymentOpen(false);
+      setPaymentForm({ amount: '', payment_method: 'mobile_money', notes: '' });
       fetchDashboardData();
     } catch (e: any) {
+      console.error('Error recording payment:', e);
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
@@ -195,47 +228,72 @@ export default function DashboardHome() {
   };
 
   const handleExportPDF = (appId: string) => {
-    toast({ title: 'Exporting PDF', description: `Generating agreement for ${appId}...` });
-    setTimeout(() => toast({ title: 'Success', description: 'PDF downloaded.' }), 1500);
+    try {
+      const app = recentApplications.find(a => a.id === appId);
+      if (!app) return;
+
+      const doc = new jsPDF();
+      doc.setFontSize(22);
+      doc.text('KEP Microcredit - Loan Agreement', 20, 20);
+      doc.setFontSize(14);
+      doc.text(`Reference: ${app.id.toUpperCase()}`, 20, 35);
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 45);
+
+      doc.setLineWidth(0.5);
+      doc.line(20, 50, 190, 50);
+
+      doc.text('Borrower Details:', 20, 65);
+      doc.text(`Name: ${app.borrower}`, 30, 75);
+
+      doc.text('Loan Details:', 20, 95);
+      doc.text(`Principal Amount: ${formatCurrency(app.amount)}`, 30, 105);
+      doc.text(`Status: ${app.status.toUpperCase()}`, 30, 115);
+
+      doc.setFontSize(10);
+      doc.text('Term: 6 Months (Standard)', 30, 125);
+      doc.text('Interest Rate: 15% p.a.', 30, 135);
+
+      doc.save(`loan_${app.id.slice(0, 8)}.pdf`);
+
+      toast({ title: 'Success', description: 'Loan agreement exported successfully.' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: 'Failed to generate PDF', variant: 'destructive' });
+    }
   };
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    const loansRef = collection(db, 'loans');
+    const profilesRef = collection(db, 'profiles');
+    const appsRef = collection(db, 'loan_applications');
 
-  const fetchDashboardData = async () => {
-    try {
-      const loansRef = collection(db, 'loans');
-      const profilesRef = collection(db, 'profiles');
-      const applicationsRef = collection(db, 'loan_applications');
-
-      const qActiveLoans = query(loansRef, where('status', '==', 'active'));
-      const activeLoansSnap = await getCountFromServer(qActiveLoans);
-      const activeLoans = activeLoansSnap.data().count;
-
-      const qOverdueLoans = query(loansRef, where('status', '==', 'overdue'));
-      const overdueLoansSnap = await getCountFromServer(qOverdueLoans);
-      const overdueLoans = overdueLoansSnap.data().count;
-
-      const qCustomers = query(profilesRef, where('role', '==', 'customer'));
-      const totalBorrowersSnap = await getCountFromServer(qCustomers);
-      const totalBorrowers = totalBorrowersSnap.data().count;
-
-      const loansSnap = await getDocs(loansRef);
-      const loansData = loansSnap.docs.map(doc => doc.data());
+    // 1. Listen for Loans (Portfolio Value, Active/Overdue counts)
+    const unsubLoans = onSnapshot(loansRef, (snapshot) => {
+      const loansData = snapshot.docs.map(doc => doc.data());
       const totalPortfolioValue = loansData.reduce((sum, loan) => sum + parseFloat(loan.principal_amount || 0), 0);
+      const activeCount = loansData.filter(l => l.status === 'active').length;
+      const overdueCount = loansData.filter(l => l.status === 'overdue').length;
 
-      setStats({
-        totalPortfolioValue: totalPortfolioValue || 4065000,
-        activeLoans: activeLoans || 2,
-        overdueLoans: overdueLoans || 1,
-        totalBorrowers: totalBorrowers || 5,
-        portfolioChange: 12,
-      });
+      setStats(prev => ({
+        ...prev,
+        totalPortfolioValue,
+        activeLoans: activeCount,
+        overdueLoans: overdueCount
+      }));
+    });
 
-      const qRecent = query(applicationsRef, orderBy('created_at', 'desc'), limit(4));
-      const recentSnap = await getDocs(qRecent);
-      const applications = recentSnap.docs.map(doc => {
+    // 2. Listen for Profiles (Borrower count)
+    const qCustomers = query(profilesRef, where('role', '==', 'customer'));
+    const unsubProfiles = onSnapshot(qCustomers, (snapshot) => {
+      setStats(prev => ({
+        ...prev,
+        totalBorrowers: snapshot.size
+      }));
+    });
+
+    // 3. Listen for Recent Applications
+    const qRecent = query(appsRef, orderBy('created_at', 'desc'), limit(4));
+    const unsubApps = onSnapshot(qRecent, (snapshot) => {
+      const apps = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -247,32 +305,20 @@ export default function DashboardHome() {
           }) : 'N/A',
         };
       });
-
-      setRecentApplications(applications.length > 0 ? applications : [
-        { id: '1', borrower: 'Grace Mushi', amount: 300000, status: 'pending', date: '20 Oct 2023' },
-        { id: '2', borrower: 'Juma Hamisi', amount: 1000000, status: 'active', date: '01 Jun 2023' },
-        { id: '3', borrower: 'Amina Salum', amount: 500000, status: 'paid', date: '01 Mar 2023' },
-        { id: '4', borrower: 'Baraka John', amount: 2000000, status: 'overdue', date: '15 Jan 2023' },
-      ]);
-
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      setStats({
-        totalPortfolioValue: 4065000,
-        activeLoans: 2,
-        overdueLoans: 1,
-        totalBorrowers: 5,
-        portfolioChange: 12,
-      });
-      setRecentApplications([
-        { id: '1', borrower: 'Grace Mushi', amount: 300000, status: 'pending', date: '20 Oct 2023' },
-        { id: '2', borrower: 'Juma Hamisi', amount: 1000000, status: 'active', date: '01 Jun 2023' },
-        { id: '3', borrower: 'Amina Salum', amount: 500000, status: 'paid', date: '01 Mar 2023' },
-        { id: '4', borrower: 'Baraka John', amount: 2000000, status: 'overdue', date: '15 Jan 2023' },
-      ]);
-    } finally {
+      setRecentApplications(apps);
       setLoading(false);
-    }
+    });
+
+    return () => {
+      unsubLoans();
+      unsubProfiles();
+      unsubApps();
+    };
+  }, []);
+
+  const fetchDashboardData = () => {
+    // No longer needed as listeners handle it, but kept to prevent breakage if called elsewhere
+    // Actually, I can remove it if it's only called in useEffect.
   };
 
   const formatCurrency = (amount: number) => {

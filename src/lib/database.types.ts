@@ -17,7 +17,7 @@ export type Database = {
                     email: string
                     full_name: string | null
                     phone: string | null
-                    role: 'admin' | 'customer' | 'branch_manager' | 'loan_officer'
+                    role: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
                     avatar_url: string | null
                     branch_id: string | null
                     is_active: boolean
@@ -34,7 +34,7 @@ export type Database = {
                     email: string
                     full_name?: string | null
                     phone?: string | null
-                    role?: 'admin' | 'customer' | 'branch_manager' | 'loan_officer'
+                    role?: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
                     avatar_url?: string | null
                     branch_id?: string | null
                     is_active?: boolean
@@ -51,7 +51,7 @@ export type Database = {
                     email?: string
                     full_name?: string | null
                     phone?: string | null
-                    role?: 'admin' | 'customer' | 'branch_manager' | 'loan_officer'
+                    role?: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
                     avatar_url?: string | null
                     branch_id?: string | null
                     is_active?: boolean
@@ -588,7 +588,7 @@ export type Database = {
             permissions: {
                 Row: {
                     id: string
-                    role: 'admin' | 'customer' | 'branch_manager' | 'loan_officer'
+                    role: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
                     module: string
                     can_view: boolean
                     can_create: boolean
@@ -599,7 +599,7 @@ export type Database = {
                 }
                 Insert: {
                     id?: string
-                    role: 'admin' | 'customer' | 'branch_manager' | 'loan_officer'
+                    role: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
                     module: string
                     can_view?: boolean
                     can_create?: boolean
@@ -610,7 +610,7 @@ export type Database = {
                 }
                 Update: {
                     id?: string
-                    role?: 'admin' | 'customer' | 'branch_manager' | 'loan_officer'
+                    role?: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
                     module?: string
                     can_view?: boolean
                     can_create?: boolean

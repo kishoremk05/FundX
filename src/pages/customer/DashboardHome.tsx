@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadDocument } from '@/services/documentService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -250,11 +250,20 @@ export default function DashboardHome() {
         return;
       }
 
-      // Validate phone (Tanzania format)
-      if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
+      // Validate phone (numbers only, minimum 6 digits)
+      const phoneDigitsOnly = formData.phone.replace(/[^0-9]/g, '');
+      if (phoneDigitsOnly.length < 6) {
         toast({
           title: 'Nambari ya Simu Isiyo Sahihi',
-          description: 'Ingiza nambari sahihi ya Tanzania (mfano: +255712345678 au 0712345678)',
+          description: 'Ingiza angalau tarakimu 6 za simu',
+          variant: 'destructive'
+        });
+        return;
+      }
+      if (formData.phone !== phoneDigitsOnly && formData.phone.replace(/[\s\-\+]/g, '') !== phoneDigitsOnly) {
+        toast({
+          title: 'Nambari ya Simu Isiyo Sahihi',
+          description: 'Nambari ya simu inapaswa kuwa na tarakimu tu (nambari), si herufi',
           variant: 'destructive'
         });
         return;
@@ -391,14 +400,23 @@ export default function DashboardHome() {
 
     setIsSubmitting(true);
     try {
-      // Upload documents to Firebase Storage
+      // Upload documents to Appwrite Storage
       const documentUrls: Record<string, string> = {};
 
       for (const file of uploadedFiles) {
-        const storageRef = ref(storage, `loan_documents/${user.uid}/${Date.now()}_${file.name}`);
-        const uploadResult = await uploadBytes(storageRef, file);
-        const downloadUrl = await getDownloadURL(uploadResult.ref);
-        documentUrls[file.name] = downloadUrl;
+        try {
+          const uploaded = await uploadDocument(file, user.uid);
+          documentUrls[uploaded.fileName] = uploaded.fileUrl;
+        } catch (uploadError: any) {
+          console.error('Document upload failed:', uploadError);
+          toast({
+            title: 'Tatizo la Kupakia Hati',
+            description: `Imeshindwa kupakia ${file.name}. Tafadhali jaribu tena.`,
+            variant: 'destructive'
+          });
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       // Calculate loan details
