@@ -141,8 +141,44 @@ export default function MyLoans() {
         setApplicationData(null);
       }
       setLoading(false);
-    }, (error) => {
+    }, async (error: any) => {
       console.error('Error fetching application snapshot:', error);
+
+      // FALLBACK: If index is missing, try a simpler query without ordering
+      if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+        try {
+          console.log("Attempting fallback snapshot (no index)...");
+          const fallbackQ = query(
+            applicationsRef,
+            where('customer_id', '==', user.uid),
+            limit(10)
+          );
+
+          const snap = await getDocs(fallbackQ);
+          if (!snap.empty) {
+            // Manual sort
+            const docs = snap.docs.map(d => ({ id: d.id, data: d.data() as any }));
+            docs.sort((a, b) => {
+              const getVal = (item: any) => {
+                const val = item.applied_at || item.created_at;
+                if (val && typeof val.toMillis === 'function') return val.toMillis();
+                if (val && typeof val.seconds === 'number') return val.seconds * 1000;
+                if (typeof val === 'string') return new Date(val).getTime();
+                return 0;
+              };
+              return getVal(b.data) - getVal(a.data);
+            });
+
+            const bestDoc = docs[0];
+            setApplicationData({ id: bestDoc.id, ...bestDoc.data });
+            if (bestDoc.data.current_step !== undefined) {
+              setCurrentStep(bestDoc.data.current_step);
+            }
+          }
+        } catch (fallbackError) {
+          console.error("Fallback snapshot failed:", fallbackError);
+        }
+      }
       setLoading(false);
     });
 
