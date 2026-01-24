@@ -11,9 +11,7 @@ const Footer = () => {
                     {/* Company Info */}
                     <div>
                         <div className="flex items-center gap-2 mb-4">
-                            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                                <span className="text-kep-primary font-bold text-xl">K</span>
-                            </div>
+                            <img src="/kep-logo-new.png" alt="KEP Microcredit" className="h-10 w-auto object-contain bg-white rounded-lg p-1" />
                             <span className="font-heading font-bold text-lg">KEP Microcredit</span>
                         </div>
                         <p className="text-white/80 text-sm mb-4">

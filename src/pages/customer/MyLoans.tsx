@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,7 @@ import {
   ChevronUp,
   MessageCircle,
   RefreshCw,
+  ArrowLeft,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -98,7 +100,7 @@ export default function MyLoans() {
   const [smsNotifications, setSmsNotifications] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [applicationData, setApplicationData] = useState<any>(null);
-  const [currentStep, setCurrentStep] = useState(2); // Default to step 2 (Document Verification)
+  const [currentStep, setCurrentStep] = useState(1); // Default to step 1
 
   // Generate reference number
   const generateReferenceNumber = () => {
@@ -109,40 +111,106 @@ export default function MyLoans() {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchApplicationData();
-    }
-  }, [user]);
+    if (!user) return;
 
-  const fetchApplicationData = async () => {
-    try {
-      if (!user) return;
+    const applicationsRef = collection(db, 'loan_applications');
+    const q = query(
+      applicationsRef,
+      where('customer_id', '==', user.uid),
+      orderBy('applied_at', 'desc'),
+      limit(1)
+    );
 
-      const applicationsRef = collection(db, 'loan_applications');
-      const q = query(
-        applicationsRef,
-        where('customer_id', '==', user.uid),
-        limit(1)
-      );
-      const snapshot = await getDocs(q);
-
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
         const doc = snapshot.docs[0];
-        setApplicationData({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        setApplicationData({ id: doc.id, ...data });
 
-        // Determine current step based on status
-        const status = doc.data().status;
-        if (status === 'pending') setCurrentStep(2);
-        else if (status === 'reviewing') setCurrentStep(3);
-        else if (status === 'approved') setCurrentStep(4);
-        else if (status === 'disbursed') setCurrentStep(5);
+        // Use dynamic step if available, otherwise fallback to status mapping
+        if (data.current_step !== undefined) {
+          setCurrentStep(data.current_step);
+        } else {
+          const status = data.status;
+          if (status === 'pending') setCurrentStep(1);
+          else if (status === 'reviewing') setCurrentStep(2);
+          else if (status === 'approved') setCurrentStep(4);
+          else if (status === 'disbursed') setCurrentStep(5);
+        }
+      } else {
+        setApplicationData(null);
       }
-    } catch (error) {
-      console.error('Error fetching application:', error);
-    } finally {
       setLoading(false);
-    }
+    }, (error) => {
+      console.error('Error fetching application snapshot:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const getStepContent = (stepId: number) => {
+    const contents: Record<number, any> = {
+      1: {
+        title: 'Ombi Limewasilishwa',
+        titleEn: 'Application Submitted',
+        message: 'Ombi lako limepokelewa na linashughulikiwa na Afisa Mikopo.',
+        messageEn: 'Your application has been received and is being processed by the Loan Officer.',
+        icon: CheckCircle,
+        color: 'text-green-600',
+        bg: 'bg-green-100',
+        border: 'border-l-green-500',
+        time: 'Masaa 1-2'
+      },
+      2: {
+        title: 'Uhakiki wa Nyaraka',
+        titleEn: 'Document Verification',
+        message: 'Nyaraka zako zinahakikiwa na Mkurugenzi wa Operesheni. Tafadhali subiri.',
+        messageEn: 'Your documents are being verified by the Director of Operational. Please wait.',
+        icon: FileText,
+        color: 'text-blue-600',
+        bg: 'bg-blue-100',
+        border: 'border-l-blue-500',
+        time: 'Masaa 2-4'
+      },
+      3: {
+        title: 'Tathmini ya Mkopo',
+        titleEn: 'Credit Assessment',
+        message: 'Mkopo wako unafanyiwa tathmini ya mwisho na Mkurugenzi wa Fedha.',
+        messageEn: 'Your loan is undergoing final assessment by the Director of Finance.',
+        icon: BarChart3,
+        color: 'text-amber-600',
+        bg: 'bg-amber-100',
+        border: 'border-l-amber-500',
+        time: 'Masaa 4-6'
+      },
+      4: {
+        title: 'Idhini ya Mwisho',
+        titleEn: 'Final Approval',
+        message: 'Ombi lako linasubiri idhini ya mwisho kutoka kwa CEO.',
+        messageEn: 'Your application is awaiting final approval from the CEO.',
+        icon: ThumbsUp,
+        color: 'text-purple-600',
+        bg: 'bg-purple-100',
+        border: 'border-l-purple-500',
+        time: 'Saa 1-3'
+      },
+      5: {
+        title: 'Malipo ya Mkopo',
+        titleEn: 'Loan Disbursement',
+        message: 'Idhini imetolewa! Idara ya Fedha inatuma pesa kwenye akaunti yako.',
+        messageEn: 'Approval granted! Finance Department is sending funds to your account.',
+        icon: Banknote,
+        color: 'text-emerald-600',
+        bg: 'bg-emerald-100',
+        border: 'border-l-emerald-500',
+        time: 'Dakika 30'
+      }
+    };
+    return contents[stepId] || contents[1];
   };
+
+  const currentStepData = getStepContent(currentStep);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('sw-TZ', {
@@ -172,10 +240,10 @@ export default function MyLoans() {
   };
 
   // Default loan data (if no application found)
-  const loanAmount = applicationData?.amount || 5000000;
-  const interestRate = applicationData?.interest_rate || 12;
-  const duration = applicationData?.duration || 12;
-  const monthlyPayment = applicationData?.monthly_payment || 444240;
+  const loanAmount = applicationData?.amount || 0;
+  const interestRate = applicationData?.interest_rate || 15;
+  const duration = applicationData?.duration_months || applicationData?.duration || 0;
+  const monthlyPayment = applicationData?.monthly_payment || 0;
 
   if (loading) {
     return (
@@ -191,9 +259,17 @@ export default function MyLoans() {
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Hali ya Ombi la Mkopo</h1>
-              <p className="text-blue-100 text-sm mt-1">Loan Application Status</p>
+            <div className="flex items-center gap-4">
+              <Link to="/customer">
+                <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 px-2">
+                  <ArrowLeft className="w-5 h-5 mr-1" />
+                  Rudi
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold">Hali ya Ombi la Mkopo</h1>
+                <p className="text-blue-100 text-sm mt-1">Loan Application Status</p>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-xs text-blue-200">Nambari ya Kuthibitisha</p>
@@ -269,24 +345,24 @@ export default function MyLoans() {
         </Card>
 
         {/* Current Status Card */}
-        <Card className="border-l-4 border-l-blue-500">
+        <Card className={`border-l-4 ${currentStepData.border}`}>
           <CardContent className="p-6">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 text-blue-600" />
+              <div className={`w-10 h-10 ${currentStepData.bg} rounded-full flex items-center justify-center flex-shrink-0`}>
+                <currentStepData.icon className={`w-5 h-5 ${currentStepData.color}`} />
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-gray-900">Uhakiki wa Nyaraka</h3>
-                <p className="text-sm text-gray-500">Document Verification</p>
-                <p className="text-sm text-yellow-600 mt-2">
-                  Tunakagua nyaraka zako na taarifa za utambulisho. Tafadhali subiri.
+                <h3 className="font-bold text-gray-900">{currentStepData.title}</h3>
+                <p className="text-sm text-gray-500">{currentStepData.titleEn}</p>
+                <p className={`text-sm mt-2 font-medium ${currentStepData.color}`}>
+                  {currentStepData.message}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  We are verifying your documents and identity information. Please wait.
+                  {currentStepData.messageEn}
                 </p>
-                <div className="flex items-center gap-2 mt-3 text-sm text-blue-600">
+                <div className={`flex items-center gap-2 mt-3 text-sm ${currentStepData.color}`}>
                   <Clock className="w-4 h-4" />
-                  <span>Muda uliobaki: Masaa 2-4</span>
+                  <span>Muda uliobaki: {currentStepData.time}</span>
                 </div>
               </div>
             </div>

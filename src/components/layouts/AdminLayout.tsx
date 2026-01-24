@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Menu,
   Package,
+  FileText,
   Bell,
   Mail,
   Shield,
@@ -53,6 +54,7 @@ interface NavigationItem {
 // Navigation structure matching reference design
 const mainNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'Applications', href: '/admin/applications', icon: FileText },
   { name: 'Borrowers', href: '/admin/borrowers', icon: Users },
   { name: 'Loans', href: '/admin/loans', icon: CreditCard },
   { name: 'Repayments', href: '/admin/repayments', icon: RefreshCw },
@@ -253,7 +255,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {/* Header */}
           <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 shrink-0">
             <h1 className="text-lg font-semibold text-foreground hidden lg:block">
-              Microcredit Management System
+              KEP - ADMIN TERMINAL
             </h1>
             <div className="lg:hidden" />
 

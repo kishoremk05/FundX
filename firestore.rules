@@ -77,13 +77,23 @@ service cloud.firestore {
     }
 
     // ============================================
+    // FORMS SECTIONS
+    // ============================================
+    match /forms/{formId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isLoanOfficer());
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isLoanOfficer());
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
     // LOAN APPLICATIONS
     // ============================================
     match /loan_applications/{applicationId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isLoanOfficer() || 
-        (isAuthenticated() && resource.data.customer_id == request.auth.uid && resource.data.status == 'pending');
+        (isAuthenticated() && (resource == null || resource.data.customer_id == request.auth.uid));
       allow delete: if isAdmin();
     }
     

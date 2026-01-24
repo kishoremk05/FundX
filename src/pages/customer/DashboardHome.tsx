@@ -456,6 +456,7 @@ export default function DashboardHome() {
 
         // Metadata
         status: 'pending',
+        current_step: 1,
         applied_at: new Date().toISOString(),
         created_at: serverTimestamp(),
       });
@@ -1585,11 +1586,17 @@ export default function DashboardHome() {
           <h3 className="text-2xl font-bold text-white mb-2">Je, bado una maswali?</h3>
           <p className="text-blue-200 mb-6">Timu yetu iko tayari kukusaidia</p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Button className="bg-green-500 hover:bg-green-600 text-white rounded-full px-6 gap-2">
+            <Button
+              className="bg-green-500 hover:bg-green-600 text-white rounded-full px-6 gap-2"
+              onClick={() => window.location.href = 'tel:+255787188323'}
+            >
               <Phone className="w-4 h-4" />
               Piga Simu
             </Button>
-            <Button className="bg-white text-blue-700 hover:bg-gray-100 rounded-full px-6 gap-2 border-2 border-white">
+            <Button
+              className="bg-white text-blue-700 hover:bg-gray-100 rounded-full px-6 gap-2 border-2 border-white"
+              onClick={() => window.location.href = 'mailto:info@kepmicrocredit.co.tz'}
+            >
               <Mail className="w-4 h-4" />
               Tuma Barua Pepe
             </Button>
@@ -1722,6 +1729,17 @@ export default function DashboardHome() {
             <Calculator className="w-4 h-4 mr-2" />
             Hesabu Mkopo
           </Button>
+
+          <Link to="/customer/forms/loan-agreement">
+            <Button
+              variant="outline"
+              className="rounded-full"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Mkataba
+            </Button>
+          </Link>
+
           <Button
             className="bg-green-500 hover:bg-green-600 rounded-full px-6"
             onClick={() => setShowForm(true)}

@@ -125,48 +125,62 @@ export default function Applications() {
     return () => unsubscribe();
   }, []);
 
-  const handleReview = async (status: 'approved' | 'rejected') => {
+  const handleReview = async (decision: 'approved' | 'rejected') => {
     if (!selectedApp) return;
 
     setReviewing(true);
     try {
       const appRef = doc(db, 'loan_applications', selectedApp.id);
+      const currentStep = selectedApp.current_step || 1;
 
-      await updateDoc(appRef, {
-        status,
-        reviewed_at: new Date().toISOString(),
-        reviewer_id: auth.currentUser?.uid,
-        notes: reviewNotes,
-        product_id: selectedProductId || selectedApp.product_id
-      });
-
-      // If we assigned a new product, update the local object for createLoan
-      let appToAuthorize = selectedApp;
-      if (selectedProductId && selectedProductId !== selectedApp.product_id) {
-        const newProduct = allProducts.find(p => p.id === selectedProductId);
-        if (newProduct) {
-          appToAuthorize = {
-            ...selectedApp,
-            product_id: selectedProductId,
-            product: newProduct
-          };
+      if (decision === 'rejected') {
+        await updateDoc(appRef, {
+          status: 'rejected',
+          reviewed_at: new Date().toISOString(),
+          reviewer_id: auth.currentUser?.uid,
+          notes: reviewNotes
+        });
+        toast.success(`Application rejected at Stage ${currentStep}`);
+      } else {
+        // Approval logic
+        if (currentStep < 4) {
+          // Progress to next stage
+          const nextStep = currentStep + 1;
+          await updateDoc(appRef, {
+            current_step: nextStep,
+            updated_at: new Date().toISOString(),
+            last_approved_by: auth.currentUser?.uid,
+            notes: reviewNotes
+          });
+          toast.success(`Stage ${currentStep} approved. Moved to Stage ${nextStep}.`);
+        } else if (currentStep === 4) {
+          // CEO Final Approval -> Create Loan and move to Disbursement stage
+          if (!selectedApp.product_id || !selectedApp.product || selectedApp.product.name === 'Unknown Product') {
+            throw new Error('Please assign a valid loan product before final approval.');
+          }
+          await createLoan(selectedApp);
+          await updateDoc(appRef, {
+            current_step: 5,
+            status: 'approved', // Formal approval status
+            updated_at: new Date().toISOString()
+          });
+          toast.success('CEO Final Approval complete. Facility authorized for disbursement.');
+        } else if (currentStep === 5) {
+          // Finance Disbursement
+          await updateDoc(appRef, {
+            status: 'disbursed',
+            disbursed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+          toast.success('Disbursement confirmed. Application complete.');
         }
       }
 
-      // If approved, create loan and repayment schedule
-      if (status === 'approved') {
-        if (!appToAuthorize.product_id || !appToAuthorize.product || appToAuthorize.product.name === 'Unknown Product') {
-          throw new Error('This application is missing product details. Please assign a valid loan product before approval.');
-        }
-        await createLoan(appToAuthorize);
-      }
-
-      toast.success(`Application assessment complete: ${status.toUpperCase()}`);
       setSelectedApp(null);
       setReviewNotes('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error reviewing application:', error);
-      toast.error('Failed to synchronize review decision');
+      toast.error(error.message || 'Failed to synchronize review decision');
     } finally {
       setReviewing(false);
     }
@@ -204,7 +218,8 @@ export default function Applications() {
       status: 'active',
       disbursed_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      loan_purpose: app.purpose // Sync purpose from application
     };
 
     batch.set(newLoanRef, loanData);
@@ -238,11 +253,18 @@ export default function Applications() {
       });
     }
 
-    // Update application status to disbursed
-    const appRef = doc(db, 'loan_applications', app.id);
-    batch.update(appRef, { status: 'disbursed' });
-
     await batch.commit();
+  };
+
+  const getStageName = (step: number) => {
+    const stages: Record<number, string> = {
+      1: 'Loan Officer',
+      2: 'Operational Director',
+      3: 'MD/Finance Director',
+      4: 'CEO Approval',
+      5: 'Finance Disbursement'
+    };
+    return stages[step] || 'Unknown Stage';
   };
 
   const getStatusBadge = (status: string) => {
@@ -314,10 +336,10 @@ export default function Applications() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="py-5 px-8 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Institutional Applicant</TableHead>
                   <TableHead className="py-5 px-8 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Credit Protocol</TableHead>
+                  <TableHead className="py-5 px-8 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Protocol Stage</TableHead>
                   <TableHead className="py-5 px-8 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Requested Principal</TableHead>
                   <TableHead className="py-5 px-8 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-center">Lifecycle Status</TableHead>
                   <TableHead className="py-5 px-8 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Submission Date</TableHead>
-                  <TableHead className="w-[120px] py-5 px-8 text-right"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -347,6 +369,13 @@ export default function Applications() {
                             <Briefcase className="w-3 h-3 text-foreground" />
                           </div>
                           <span className="text-xs font-black text-foreground/70 uppercase tracking-widest">{app.product?.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-5 px-8">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px] font-black uppercase bg-blue-50 text-blue-600 border-blue-200">
+                            {getStageName(app.current_step || 1)}
+                          </Badge>
                         </div>
                       </TableCell>
                       <TableCell className="py-5 px-8">
@@ -460,9 +489,17 @@ export default function Applications() {
                           {formatCurrency(parseFloat(selectedApp.amount as any))}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-black uppercase text-primary/40 tracking-widest">CURRENT PHASE:</span>
-                        {getStatusBadge(selectedApp.status)}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black uppercase text-primary/40 tracking-widest">CURRENT PHASE:</span>
+                          {getStatusBadge(selectedApp.status)}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black uppercase text-primary/40 tracking-widest">STAGE:</span>
+                          <Badge variant="secondary" className="text-[9px] font-black uppercase bg-blue-100 text-blue-700 border-none">
+                            {getStageName(selectedApp.current_step || 1)}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -644,36 +681,41 @@ export default function Applications() {
               Discard Protocol
             </Button>
 
-            {selectedApp?.status === 'pending' && (
-              <div className="flex gap-4 ml-auto">
-                <Button
-                  variant="outline"
-                  onClick={() => handleReview('rejected')}
-                  disabled={reviewing}
-                  className="border-destructive/20 text-destructive hover:bg-destructive hover:text-white transition-all px-8 font-black uppercase tracking-widest text-[10px] h-12 rounded-xl"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Deny Request
-                </Button>
-                <Button
-                  onClick={() => handleReview('approved')}
-                  disabled={reviewing}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/30 px-10 font-black uppercase tracking-widest text-[10px] h-12 rounded-xl active:scale-95 transition-all text-base"
-                >
-                  {reviewing ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Synchronizing...
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Check className="w-5 h-5" />
-                      Authorize Facility
-                    </div>
-                  )}
-                </Button>
-              </div>
-            )}
+            {(selectedApp?.status === 'pending' || selectedApp?.status === 'approved' || selectedApp?.current_step === 5) &&
+              selectedApp?.status !== 'rejected' && selectedApp?.status !== 'disbursed' && (
+                <div className="flex gap-4 ml-auto">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleReview('rejected')}
+                    disabled={reviewing}
+                    className="border-destructive/20 text-destructive hover:bg-destructive hover:text-white transition-all px-8 font-black uppercase tracking-widest text-[10px] h-12 rounded-xl"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Deny Request
+                  </Button>
+                  <Button
+                    onClick={() => handleReview('approved')}
+                    disabled={reviewing}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/30 px-10 font-black uppercase tracking-widest text-[10px] h-12 rounded-xl active:scale-95 transition-all text-base"
+                  >
+                    {reviewing ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Synchronizing...
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 uppercase tracking-tighter">
+                        <Check className="w-5 h-5" />
+                        {selectedApp?.current_step && selectedApp.current_step >= 5
+                          ? "Confirm Disbursement"
+                          : selectedApp?.current_step === 4
+                            ? "CEO Final Approve"
+                            : `Approve ${getStageName(selectedApp?.current_step || 1)}`}
+                      </div>
+                    )}
+                  </Button>
+                </div>
+              )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

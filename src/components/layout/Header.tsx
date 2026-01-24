@@ -1,20 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const navItems = [
-    { label: "Microfinance", href: "#microfinance" },
-    { label: "Business Loans", href: "#business-loans" },
-    { label: "Personal Loans", href: "#personal-loans" },
-    { label: "Consulting", href: "#consulting" },
-    { label: "CPA Services", href: "#cpa" },
-    { label: "Business Registration", href: "#registration" },
-  ];
 
   const mainNavItems = [
     { label: "Services", href: "#services" },
@@ -29,27 +19,10 @@ const Header = () => {
         <div className="flex items-center justify-between py-4">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <img src="/kep-logo.png" alt="KEP Microcredit" className="h-12 w-auto object-contain" />
+            <img src="/kep-logo-new.png" alt="KEP Microcredit" className="h-14 w-auto object-contain" />
             <div className="hidden sm:block">
               <h1 className="font-heading font-bold text-lg text-foreground">KEP Microcredit</h1>
               <p className="text-xs text-muted-foreground">The Lender of Your Next Hope</p>
-            </div>
-          </div>
-
-          {/* Search Bar */}
-          <div className="hidden lg:flex flex-1 max-w-xl mx-8">
-            <div className="relative w-full">
-              <Input
-                type="text"
-                placeholder="Search for services, loans, consulting..."
-                className="w-full pl-4 pr-12 h-11 border-border rounded-lg"
-              />
-              <Button
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 bg-kep-blue hover:bg-kep-blue-dark"
-              >
-                <Search className="w-4 h-4" />
-              </Button>
             </div>
           </div>
 
@@ -81,35 +54,14 @@ const Header = () => {
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </Button>
         </div>
-
-        {/* Secondary Nav */}
-        <nav className="hidden lg:flex items-center gap-6 py-3 border-t border-border">
-          {navItems.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
       </div>
 
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-background border-t border-border">
           <div className="container-custom px-4 py-4 space-y-4">
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search..."
-                className="w-full pl-4 pr-12"
-              />
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            </div>
             <div className="space-y-2">
-              {[...mainNavItems, ...navItems].map((item) => (
+              {mainNavItems.map((item) => (
                 <a
                   key={item.label}
                   href={item.href}

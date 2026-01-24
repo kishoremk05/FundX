@@ -1,10 +1,28 @@
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Clock, Shield, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
+const sliderImages = [
+  { src: "/hero-image.jpg", alt: "KEP Microcredit team meeting" },
+  { src: "/slider-1.jpg", alt: "Professional Financial Services" },
+  { src: "/slider-2.jpg", alt: "Collaborative Excellence" },
+  { src: "/slider-3.jpg", alt: "Personalized Consultation" },
+];
+
 const HeroSection = () => {
-  const { ref, isVisible } = useScrollAnimation(true); // Trigger once for hero
+  const { ref, isVisible } = useScrollAnimation(true);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(nextSlide, 5000);
+    return () => clearInterval(interval);
+  }, [nextSlide]);
 
   const features = [
     { icon: Clock, title: "24 Hour", subtitle: "Fast Processing" },
@@ -63,19 +81,40 @@ const HeroSection = () => {
             </div>
           </div>
 
-          {/* Right Content - Hero Image */}
+          {/* Right Content - Hero Image Slider */}
           <div className="relative animate-fade-in">
-            <div className="relative rounded-2xl overflow-hidden">
-              <img
-                src="/hero-image.jpg"
-                alt="KEP Microcredit team meeting"
-                className="w-full h-auto rounded-2xl"
-              />
+            <div className="relative rounded-2xl overflow-hidden bg-muted" style={{ aspectRatio: '4/3' }}>
+              {/* Image Slider */}
+              {sliderImages.map((slide, index) => (
+                <img
+                  key={index}
+                  src={slide.src}
+                  alt={slide.alt}
+                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ease-in-out ${index === currentSlide ? "opacity-100" : "opacity-0"
+                    }`}
+                />
+              ))}
+
               {/* Stats Overlay */}
-              <div className="absolute bottom-4 right-4 bg-primary text-primary-foreground p-4 rounded-xl shadow-lg">
+              <div className="absolute bottom-4 right-4 bg-primary text-primary-foreground p-4 rounded-xl shadow-lg z-10">
                 <p className="text-3xl font-bold">1,352+</p>
                 <p className="text-sm opacity-90">Licensed Institutions</p>
                 <p className="text-xs opacity-75">in Tanzania</p>
+              </div>
+
+              {/* Dot Indicators */}
+              <div className="absolute bottom-4 left-4 flex gap-2 z-10">
+                {sliderImages.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentSlide(index)}
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${index === currentSlide
+                        ? "bg-primary"
+                        : "bg-white/50 hover:bg-white/70"
+                      }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
               </div>
             </div>
           </div>

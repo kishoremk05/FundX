@@ -62,6 +62,7 @@ interface RecentApplication {
   borrower: string;
   amount: number;
   status: 'pending' | 'active' | 'paid' | 'overdue';
+  current_step: number;
   date: string;
 }
 
@@ -300,12 +301,13 @@ export default function DashboardHome() {
           borrower: data.full_name || 'Unknown',
           amount: parseFloat(data.amount || 0),
           status: data.status || 'pending',
+          current_step: data.current_step || 1,
           date: data.created_at ? new Date(data.created_at).toLocaleDateString('en-GB', {
             day: '2-digit', month: 'short', year: 'numeric'
           }) : 'N/A',
         };
       });
-      setRecentApplications(apps);
+      setRecentApplications(apps as RecentApplication[]);
       setLoading(false);
     });
 
@@ -447,48 +449,63 @@ export default function DashboardHome() {
               <tr className="bg-muted/30 border-b border-border">
                 <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Borrower</th>
                 <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Amount</th>
+                <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Protocol Stage</th>
                 <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Status</th>
                 <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase">Date</th>
                 <th className="w-[60px]"></th>
               </tr>
             </thead>
             <tbody>
-              {recentApplications.map((app) => (
-                <tr key={app.id} className="border-b border-border hover:bg-muted/10">
-                  <td className="py-4 px-6 text-sm font-medium text-foreground">{app.borrower}</td>
-                  <td className="py-4 px-6 text-sm text-muted-foreground">{formatCurrency(app.amount)}</td>
-                  <td className="py-4 px-6">{getStatusBadge(app.status)}</td>
-                  <td className="py-4 px-6 text-sm text-muted-foreground">{app.date}</td>
-                  <td className="py-4 px-6">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem asChild>
-                          <Link to="/admin/applications" className="flex items-center">
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Detail
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          setSelectedLoanId(app.id);
-                          setIsPaymentOpen(true);
-                        }}>
-                          <TrendingUp className="w-4 h-4 mr-2" />
-                          Record Payment
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleExportPDF(app.id)}>
-                          <FileText className="w-4 h-4 mr-2" />
-                          Export PDF
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
+              {recentApplications.map((app) => {
+                const borrowerProfile = borrowers.find(b => b.id === (app as any).customer_id);
+                const borrowerName = borrowerProfile?.full_name || app.borrower;
+
+                return (
+                  <tr key={app.id} className="border-b border-border hover:bg-muted/10">
+                    <td className="py-4 px-6 text-sm font-medium text-foreground">{borrowerName}</td>
+                    <td className="py-4 px-6 text-sm text-muted-foreground">{formatCurrency(app.amount)}</td>
+                    <td className="py-4 px-6">
+                      <Badge variant="outline" className="text-[10px] font-semibold border-primary/20 bg-primary/5 text-primary">
+                        {app.current_step === 1 ? 'Loan Officer' :
+                          app.current_step === 2 ? 'Ops Director' :
+                            app.current_step === 3 ? 'MD/Finance' :
+                              app.current_step === 4 ? 'CEO Approval' :
+                                app.current_step === 5 ? 'Finance Disb.' : `Stage ${app.current_step}`}
+                      </Badge>
+                    </td>
+                    <td className="py-4 px-6">{getStatusBadge(app.status)}</td>
+                    <td className="py-4 px-6 text-sm text-muted-foreground">{app.date}</td>
+                    <td className="py-4 px-6">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem asChild>
+                            <Link to="/admin/applications" className="flex items-center">
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Detail
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedLoanId(app.id);
+                            setIsPaymentOpen(true);
+                          }}>
+                            <TrendingUp className="w-4 h-4 mr-2" />
+                            Record Payment
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExportPDF(app.id)}>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Export PDF
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </CardContent>

@@ -163,6 +163,8 @@ export type Database = {
                     applied_at: string
                     reviewed_at: string | null
                     reviewer_id: string | null
+                    last_approved_by: string | null
+                    current_step: number
                     notes: string | null
                     created_at: string
                     updated_at: string

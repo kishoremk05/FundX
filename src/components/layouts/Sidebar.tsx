@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
   Users,
@@ -22,11 +22,12 @@ import {
 import { Button } from '@/components/ui/button';
 
 const mainNavigation = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'DASHBOARD - VERIFIED', href: '/admin', icon: LayoutDashboard },
   { name: 'Borrowers', href: '/admin/borrowers', icon: Users },
   { name: 'Loans', href: '/admin/loans', icon: CreditCard },
   { name: 'Repayments', href: '/admin/repayments', icon: Receipt },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
+  { name: 'Applications', href: '/admin/applications', icon: FileText },
 ];
 
 const managementNavigation = [
