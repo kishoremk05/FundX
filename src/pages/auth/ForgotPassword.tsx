@@ -77,7 +77,7 @@ export default function ForgotPassword() {
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-2">
                     <div className="flex items-center justify-center mb-4">
-                        <img src="/kep-logo.png" alt="KEP Microcredit" className="h-24 object-contain" />
+                        <img src="/kep-logo-new.png" alt="KEP Microcredit" className="h-24 object-contain bg-white/90 dark:bg-white rounded-xl p-2" />
                     </div>
                     <CardTitle className="text-2xl text-center font-heading">Reset Password</CardTitle>
                     <CardDescription className="text-center">

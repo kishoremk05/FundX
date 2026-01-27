@@ -10,9 +10,11 @@ const Footer = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     {/* Company Info */}
                     <div>
-                        <div className="flex items-center gap-2 mb-4">
-                            <img src="/kep-logo-new.png" alt="KEP Microcredit" className="h-10 w-auto object-contain bg-white rounded-lg p-1" />
-                            <span className="font-heading font-bold text-lg">KEP Microcredit</span>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="bg-white/95 backdrop-blur-sm p-1.5 rounded-xl shadow-lg border border-white/20 group hover:scale-105 transition-transform duration-300">
+                                <img src="/kep-logo-new.png" alt="KEP Microcredit" className="h-9 w-auto object-contain" />
+                            </div>
+                            <span className="font-heading font-bold text-lg tracking-tight">KEP Microcredit</span>
                         </div>
                         <p className="text-white/80 text-sm mb-4">
                             Mikopo ya Haraka - Quick loans to help you achieve your financial goals.

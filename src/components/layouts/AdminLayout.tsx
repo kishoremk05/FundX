@@ -152,18 +152,29 @@ function NavItem({ item, pathname }: { item: NavigationItem; pathname: string })
   );
 }
 
-function SidebarContent({ signOut, pathname }: { signOut: () => void; pathname: string }) {
+function SidebarContent({ signOut, pathname, userRole }: { signOut: () => void; pathname: string; userRole?: string }) {
+  // All officer roles that can only see Applications
+  const officerRoles = ['loan_officer', 'md_finance', 'ops_director', 'ceo', 'finance_officer'];
+  const isOfficer = userRole && officerRoles.includes(userRole);
+
+  const filteredMainNav = isOfficer
+    ? mainNavigation.filter(item => item.name === 'Applications')
+    : mainNavigation;
+
+  const showManagement = !isOfficer;
+  const showSystem = !isOfficer;
+
   return (
     <div className="flex flex-col h-full bg-card border-r border-border">
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-border">
         <Link to="/admin" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-            <span className="text-primary font-bold text-lg">K</span>
+          <div className="bg-white p-1.5 rounded-lg shadow-sm border border-border/50">
+            <img src="/kep-logo-new.png" alt="Logo" className="w-8 h-8 object-contain" />
           </div>
           <div>
-            <p className="font-bold text-foreground tracking-tight">KEP</p>
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest -mt-0.5">ENTERPRISE</p>
+            <p className="font-bold text-foreground tracking-tight leading-tight">KEP</p>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">ENTERPRISE</p>
           </div>
         </Link>
       </div>
@@ -176,35 +187,39 @@ function SidebarContent({ signOut, pathname }: { signOut: () => void; pathname: 
             Main
           </p>
           <nav className="space-y-1">
-            {mainNavigation.map((item) => (
+            {filteredMainNav.map((item) => (
               <NavItem key={item.name} item={item} pathname={pathname} />
             ))}
           </nav>
         </div>
 
-        {/* MANAGEMENT Section */}
-        <div className="mb-6">
-          <p className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Management
-          </p>
-          <nav className="space-y-1">
-            {managementNavigation.map((item) => (
-              <NavItem key={item.name} item={item} pathname={pathname} />
-            ))}
-          </nav>
-        </div>
+        {/* MANAGEMENT Section - hidden for officers */}
+        {showManagement && (
+          <div className="mb-6">
+            <p className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Management
+            </p>
+            <nav className="space-y-1">
+              {managementNavigation.map((item) => (
+                <NavItem key={item.name} item={item} pathname={pathname} />
+              ))}
+            </nav>
+          </div>
+        )}
 
-        {/* SYSTEM Section */}
-        <div className="mb-6">
-          <p className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            System
-          </p>
-          <nav className="space-y-1">
-            {systemNavigation.map((item) => (
-              <NavItem key={item.name} item={item} pathname={pathname} />
-            ))}
-          </nav>
-        </div>
+        {/* SYSTEM Section - hidden for officers */}
+        {showSystem && (
+          <div className="mb-6">
+            <p className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              System
+            </p>
+            <nav className="space-y-1">
+              {systemNavigation.map((item) => (
+                <NavItem key={item.name} item={item} pathname={pathname} />
+              ))}
+            </nav>
+          </div>
+        )}
       </ScrollArea>
 
       {/* Sign Out */}
@@ -235,7 +250,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="flex h-screen overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className="hidden lg:block w-64 shrink-0">
-          <SidebarContent signOut={signOut} pathname={location.pathname} />
+          <SidebarContent signOut={signOut} pathname={location.pathname} userRole={profile?.role} />
         </aside>
 
         {/* Mobile Sidebar */}
@@ -246,7 +261,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0 border-none">
-            <SidebarContent signOut={signOut} pathname={location.pathname} />
+            <SidebarContent signOut={signOut} pathname={location.pathname} userRole={profile?.role} />
           </SheetContent>
         </Sheet>
 

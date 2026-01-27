@@ -17,7 +17,7 @@ export type Database = {
                     email: string
                     full_name: string | null
                     phone: string | null
-                    role: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
+                    role: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant' | 'md_finance' | 'ops_director' | 'ceo' | 'finance_officer' | string
                     avatar_url: string | null
                     branch_id: string | null
                     is_active: boolean
@@ -26,6 +26,7 @@ export type Database = {
                     email_verified: boolean
                     language: string
                     theme: 'light' | 'dark' | 'system'
+                    assigned_stage: number | null
                     created_at: string
                     updated_at: string
                 }
@@ -34,7 +35,7 @@ export type Database = {
                     email: string
                     full_name?: string | null
                     phone?: string | null
-                    role?: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
+                    role?: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant' | 'md_finance' | 'ops_director' | 'ceo' | 'finance_officer' | string
                     avatar_url?: string | null
                     branch_id?: string | null
                     is_active?: boolean
@@ -43,6 +44,7 @@ export type Database = {
                     email_verified?: boolean
                     language?: string
                     theme?: 'light' | 'dark' | 'system'
+                    assigned_stage?: number | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -51,7 +53,7 @@ export type Database = {
                     email?: string
                     full_name?: string | null
                     phone?: string | null
-                    role?: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
+                    role?: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant' | 'md_finance' | 'ops_director' | 'ceo' | 'finance_officer' | string
                     avatar_url?: string | null
                     branch_id?: string | null
                     is_active?: boolean
@@ -60,6 +62,7 @@ export type Database = {
                     email_verified?: boolean
                     language?: string
                     theme?: 'light' | 'dark' | 'system'
+                    assigned_stage?: number | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -166,6 +169,10 @@ export type Database = {
                     last_approved_by: string | null
                     current_step: number
                     notes: string | null
+                    rejection_reason?: string | null
+                    rejection_stage?: number | null
+                    rejected_by?: string | null
+                    rejected_at?: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -180,6 +187,10 @@ export type Database = {
                     reviewed_at?: string | null
                     reviewer_id?: string | null
                     notes?: string | null
+                    rejection_reason?: string | null
+                    rejection_stage?: number | null
+                    rejected_by?: string | null
+                    rejected_at?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -194,6 +205,10 @@ export type Database = {
                     reviewed_at?: string | null
                     reviewer_id?: string | null
                     notes?: string | null
+                    rejection_reason?: string | null
+                    rejection_stage?: number | null
+                    rejected_by?: string | null
+                    rejected_at?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -590,7 +605,7 @@ export type Database = {
             permissions: {
                 Row: {
                     id: string
-                    role: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
+                    role: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant' | 'md_finance'
                     module: string
                     can_view: boolean
                     can_create: boolean
@@ -601,7 +616,7 @@ export type Database = {
                 }
                 Insert: {
                     id?: string
-                    role: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
+                    role: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant' | 'md_finance'
                     module: string
                     can_view?: boolean
                     can_create?: boolean
@@ -612,7 +627,7 @@ export type Database = {
                 }
                 Update: {
                     id?: string
-                    role?: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant'
+                    role?: 'admin' | 'Super_admin' | 'customer' | 'branch_manager' | 'loan_officer' | 'accountant' | 'md_finance'
                     module?: string
                     can_view?: boolean
                     can_create?: boolean

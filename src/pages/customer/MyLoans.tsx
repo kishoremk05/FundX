@@ -25,6 +25,7 @@ import {
   MessageCircle,
   RefreshCw,
   ArrowLeft,
+  X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -114,21 +115,38 @@ export default function MyLoans() {
     if (!user) return;
 
     const applicationsRef = collection(db, 'loan_applications');
+    // REMOVED orderBy to prevent "Missing Index" errors in console.
+    // We will sort the results in memory in the snapshot handler.
     const q = query(
       applicationsRef,
       where('customer_id', '==', user.uid),
-      orderBy('applied_at', 'desc'),
-      limit(1)
+      limit(10) // Fetch a few to ensure we find the latest
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       if (!snapshot.empty) {
-        const doc = snapshot.docs[0];
-        const data = doc.data();
-        setApplicationData({ id: doc.id, ...data });
+        // Manual sort to find the latest application
+        const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() as any }));
+        docs.sort((a, b) => {
+          const getVal = (item: any) => {
+            const val = item.applied_at || item.created_at;
+            if (val && typeof val.toMillis === 'function') return val.toMillis();
+            if (val && typeof val.seconds === 'number') return val.seconds * 1000;
+            if (typeof val === 'string') return new Date(val).getTime();
+            return 0;
+          };
+          return getVal(b) - getVal(a);
+        });
 
+        const data = docs[0];
+        setApplicationData(data);
+
+        // Handle rejected status
+        if (data.status === 'rejected') {
+          setCurrentStep(0); // Special step for rejected
+        }
         // Use dynamic step if available, otherwise fallback to status mapping
-        if (data.current_step !== undefined) {
+        else if (data.current_step !== undefined) {
           setCurrentStep(data.current_step);
         } else {
           const status = data.status;
@@ -141,44 +159,8 @@ export default function MyLoans() {
         setApplicationData(null);
       }
       setLoading(false);
-    }, async (error: any) => {
+    }, (error) => {
       console.error('Error fetching application snapshot:', error);
-
-      // FALLBACK: If index is missing, try a simpler query without ordering
-      if (error.code === 'failed-precondition' || error.message?.includes('index')) {
-        try {
-          console.log("Attempting fallback snapshot (no index)...");
-          const fallbackQ = query(
-            applicationsRef,
-            where('customer_id', '==', user.uid),
-            limit(10)
-          );
-
-          const snap = await getDocs(fallbackQ);
-          if (!snap.empty) {
-            // Manual sort
-            const docs = snap.docs.map(d => ({ id: d.id, data: d.data() as any }));
-            docs.sort((a, b) => {
-              const getVal = (item: any) => {
-                const val = item.applied_at || item.created_at;
-                if (val && typeof val.toMillis === 'function') return val.toMillis();
-                if (val && typeof val.seconds === 'number') return val.seconds * 1000;
-                if (typeof val === 'string') return new Date(val).getTime();
-                return 0;
-              };
-              return getVal(b.data) - getVal(a.data);
-            });
-
-            const bestDoc = docs[0];
-            setApplicationData({ id: bestDoc.id, ...bestDoc.data });
-            if (bestDoc.data.current_step !== undefined) {
-              setCurrentStep(bestDoc.data.current_step);
-            }
-          }
-        } catch (fallbackError) {
-          console.error("Fallback snapshot failed:", fallbackError);
-        }
-      }
       setLoading(false);
     });
 
@@ -187,6 +169,17 @@ export default function MyLoans() {
 
   const getStepContent = (stepId: number) => {
     const contents: Record<number, any> = {
+      0: {
+        title: 'Ombi Limekataliwa',
+        titleEn: 'Application Rejected',
+        message: applicationData?.rejection_reason || 'Ombi lako limekataliwa baada ya tathmini. Tafadhali wasiliana na ofisi yetu kwa maelezo zaidi.',
+        messageEn: applicationData?.rejection_reason || 'Your application has been rejected after assessment. Please contact our office for more details.',
+        icon: X,
+        color: 'text-red-600',
+        bg: 'bg-red-100',
+        border: 'border-l-red-500',
+        time: 'N/A'
+      },
       1: {
         title: 'Ombi Limewasilishwa',
         titleEn: 'Application Submitted',
@@ -345,31 +338,41 @@ export default function MyLoans() {
               {/* Steps */}
               <div className="relative flex justify-between">
                 {PROGRESS_STEPS.map((step) => {
+                  const isRejected = applicationData?.status === 'rejected';
                   const status = getStepStatus(step.id);
                   const Icon = step.icon;
+
+                  // If rejected at a specific stage, show that stage as red? 
+                  // For now, let's just keep the tracker but show the current state below.
+                  // Or if rejected, we color the active step red if it's the rejection stage.
+                  const isRejectionStage = isRejected && applicationData.rejection_stage === step.id;
 
                   return (
                     <div key={step.id} className="flex flex-col items-center" style={{ width: '18%' }}>
                       <div
                         className={`w-12 h-12 rounded-full flex items-center justify-center z-10 transition-all duration-300 ${status === 'completed'
                           ? 'bg-green-500 text-white'
-                          : status === 'current'
-                            ? 'bg-blue-600 text-white ring-4 ring-blue-100'
-                            : 'bg-gray-200 text-gray-400'
+                          : isRejectionStage
+                            ? 'bg-red-500 text-white ring-4 ring-red-100'
+                            : status === 'current'
+                              ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                              : 'bg-gray-200 text-gray-400'
                           }`}
                       >
                         {status === 'completed' ? (
                           <CheckCircle className="w-6 h-6" />
+                        ) : isRejectionStage ? (
+                          <X className="w-6 h-6" />
                         ) : (
                           <Icon className="w-5 h-5" />
                         )}
                       </div>
-                      <p className={`text-xs font-medium mt-2 text-center ${status === 'current' ? 'text-blue-600' : status === 'completed' ? 'text-green-600' : 'text-gray-400'
+                      <p className={`text-xs font-medium mt-2 text-center ${isRejectionStage ? 'text-red-600' : status === 'current' ? 'text-blue-600' : status === 'completed' ? 'text-green-600' : 'text-gray-400'
                         }`}>
                         {step.nameSwahili}
                       </p>
                       <p className="text-[10px] text-gray-400 text-center">{step.nameEnglish}</p>
-                      {step.estimatedTime && status === 'current' && (
+                      {step.estimatedTime && status === 'current' && !isRejected && (
                         <p className="text-[10px] text-blue-500 mt-1">{step.estimatedTime}</p>
                       )}
                     </div>
@@ -396,10 +399,12 @@ export default function MyLoans() {
                 <p className="text-xs text-gray-400 mt-1">
                   {currentStepData.messageEn}
                 </p>
-                <div className={`flex items-center gap-2 mt-3 text-sm ${currentStepData.color}`}>
-                  <Clock className="w-4 h-4" />
-                  <span>Muda uliobaki: {currentStepData.time}</span>
-                </div>
+                {currentStep !== 0 && (
+                  <div className={`flex items-center gap-2 mt-3 text-sm ${currentStepData.color}`}>
+                    <Clock className="w-4 h-4" />
+                    <span>Muda uliobaki: {currentStepData.time}</span>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

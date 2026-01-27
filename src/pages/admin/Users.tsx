@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react';
 import { useFirestore } from '@/hooks/useFirestore';
 import { cn } from '@/lib/utils';
 import type { Profile } from '@/lib/database.types';
+import { createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
+import { secondaryAuth, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,8 +62,11 @@ export default function Users() {
 
   const [formData, setFormData] = useState({
     email: '',
+    password: '',
     full_name: '',
-    role: 'loan_officer' as 'admin' | 'loan_officer' | 'branch_manager' | 'customer',
+    role: 'loan_officer' as string,
+    custom_role: '',
+    assigned_stage: 1,
   });
 
   const filteredUsers = users.filter(user =>
@@ -97,28 +103,54 @@ export default function Users() {
     setIsSubmitting(true);
     try {
       if (editingUser) {
+        const finalRole = formData.role === 'custom' ? formData.custom_role : formData.role;
         await update(editingUser.id, {
           full_name: formData.full_name,
-          role: formData.role,
+          role: finalRole,
+          assigned_stage: formData.assigned_stage,
         });
         toast({
           title: 'User Updated',
           description: `${formData.full_name} has been updated.`,
         });
       } else {
-        await add({
-          ...formData,
+        // Create Firebase Auth user first
+        if (!formData.password || formData.password.length < 6) {
+          throw new Error('Password must be at least 6 characters');
+        }
+
+        // Use secondary auth to create user without affecting current session
+        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, formData.email, formData.password);
+        const userId = userCredential.user.uid;
+
+        // Sign out from secondary auth immediately (doesn't affect main auth)
+        await firebaseSignOut(secondaryAuth);
+
+        // Determine final role (use custom_role if role is 'custom')
+        const finalRole = formData.role === 'custom' ? formData.custom_role : formData.role;
+
+        // Create profile in Firestore
+        const newProfile: Partial<Profile> = {
+          id: userId,
+          email: formData.email,
+          full_name: formData.full_name,
+          role: finalRole,
+          assigned_stage: formData.assigned_stage,
           is_active: true,
           created_at: new Date().toISOString(),
-        } as any);
+          updated_at: new Date().toISOString(),
+        };
+
+        await setDoc(doc(db, 'profiles', userId), newProfile);
+
         toast({
-          title: 'User Added',
-          description: `${formData.full_name} has been added.`,
+          title: 'User Created',
+          description: `${formData.full_name} can now login with their credentials.`,
         });
       }
       setDialogOpen(false);
       setEditingUser(null);
-      setFormData({ email: '', full_name: '', role: 'loan_officer' });
+      setFormData({ email: '', password: '', full_name: '', role: 'loan_officer', custom_role: '', assigned_stage: 1 });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
@@ -130,8 +162,11 @@ export default function Users() {
     setEditingUser(user);
     setFormData({
       email: user.email || '',
+      password: '',
       full_name: user.full_name || '',
-      role: user.role as any,
+      role: user.role || 'loan_officer',
+      custom_role: '',
+      assigned_stage: user.assigned_stage || 1,
     });
     setDialogOpen(true);
   };
@@ -163,7 +198,7 @@ export default function Users() {
           setDialogOpen(open);
           if (!open) {
             setEditingUser(null);
-            setFormData({ email: '', full_name: '', role: 'loan_officer' });
+            setFormData({ email: '', password: '', full_name: '', role: 'loan_officer', custom_role: '', assigned_stage: 1 });
           }
         }}>
           <DialogTrigger asChild>
@@ -203,22 +238,76 @@ export default function Users() {
                 />
               </div>
 
+              {/* Password - only for new users */}
+              {!editingUser && (
+                <div className="space-y-2">
+                  <Label>Password</Label>
+                  <Input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Minimum 6 characters"
+                    required
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>Role</Label>
                 <Select
                   value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value as any })}
+                  onValueChange={(value) => setFormData({ ...formData, role: value, custom_role: '' })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="loan_officer">Stage 1 - Loan Officer</SelectItem>
+                    <SelectItem value="ops_director">Stage 2 - Operational Director</SelectItem>
+                    <SelectItem value="md_finance">Stage 3 - MD/Finance Director</SelectItem>
+                    <SelectItem value="ceo">Stage 4 - CEO</SelectItem>
+                    <SelectItem value="finance_officer">Stage 5 - Finance Disbursement</SelectItem>
                     <SelectItem value="branch_manager">Branch Manager</SelectItem>
-                    <SelectItem value="loan_officer">Loan Officer</SelectItem>
+                    <SelectItem value="custom">Custom Role...</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Custom Role Input */}
+              {formData.role === 'custom' && (
+                <div className="space-y-2">
+                  <Label>Custom Role Name</Label>
+                  <Input
+                    value={formData.custom_role}
+                    onChange={(e) => setFormData({ ...formData, custom_role: e.target.value })}
+                    placeholder="Enter custom role name"
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Assigned Stage - for officer roles */}
+              {['loan_officer', 'ops_director', 'md_finance', 'ceo', 'finance_officer', 'custom'].includes(formData.role) && (
+                <div className="space-y-2">
+                  <Label>Assigned Approval Stage</Label>
+                  <Select
+                    value={formData.assigned_stage.toString()}
+                    onValueChange={(value) => setFormData({ ...formData, assigned_stage: parseInt(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Stage 1 - Loan Officer</SelectItem>
+                      <SelectItem value="2">Stage 2 - Operational Director</SelectItem>
+                      <SelectItem value="3">Stage 3 - MD/Finance Director</SelectItem>
+                      <SelectItem value="4">Stage 4 - CEO Approval</SelectItem>
+                      <SelectItem value="5">Stage 5 - Finance Disbursement</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <DialogFooter className="pt-4">
                 <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>

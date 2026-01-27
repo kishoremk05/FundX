@@ -23,6 +23,8 @@ interface AuthContextType {
   isAdmin: boolean;
   isCustomer: boolean;
   isLoanOfficer: boolean;
+  isMDFinance: boolean;
+  isOfficer: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -153,7 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'Super_admin';
   const isCustomer = profile?.role === 'customer';
-  const isLoanOfficer = profile?.role === 'loan_officer' || profile?.role === 'admin';
+  const isLoanOfficer = profile?.role === 'loan_officer';
+  const isMDFinance = profile?.role === 'md_finance';
+  const isOfficer = isLoanOfficer || isMDFinance;
 
   const value = {
     user,
@@ -168,6 +172,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin,
     isCustomer,
     isLoanOfficer,
+    isMDFinance,
+    isOfficer,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

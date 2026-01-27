@@ -37,7 +37,7 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
           {/* Logo */}
           <div className="h-16 flex items-center px-6 border-b border-border">
             <Link to="/customer" className="flex items-center gap-3">
-              <img src="/kep-logo.png" alt="KEP Microcredit" className="h-10 object-contain" />
+              <img src="/kep-logo-new.png" alt="KEP Microcredit" className="h-10 object-contain bg-white/90 dark:bg-white rounded-lg p-1" />
               <div>
                 <p className="text-xs text-muted-foreground">Customer Portal</p>
               </div>

@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface AuthGuardProps {
   children: ReactNode;
   requireAuth?: boolean;
-  requiredRole?: 'admin' | 'customer' | 'loan_officer' | 'branch_manager';
+  requiredRole?: 'admin' | 'customer' | 'loan_officer' | 'branch_manager' | 'md_finance';
 }
 
 export function AuthGuard({ children, requireAuth = true, requiredRole }: AuthGuardProps) {
@@ -35,7 +35,9 @@ export function AuthGuard({ children, requireAuth = true, requiredRole }: AuthGu
       );
     }
     // Redirect authenticated users away from auth pages based on their role
-    const redirectTo = profile?.role === 'admin' || profile?.role === 'loan_officer' ? '/admin' : '/customer';
+    const officerRoles = ['admin', 'loan_officer', 'md_finance', 'ops_director', 'ceo', 'finance_officer'];
+    const isOfficerOrAdmin = profile?.role && officerRoles.includes(profile.role);
+    const redirectTo = isOfficerOrAdmin ? '/admin' : '/customer';
     return <Navigate to={redirectTo} replace />;
   }
 
@@ -49,8 +51,9 @@ export function AuthGuard({ children, requireAuth = true, requiredRole }: AuthGu
       );
     }
 
-    // Special case: loan_officer can access admin routes
-    if (requiredRole === 'admin' && profile?.role === 'loan_officer') {
+    // Special case: all officer roles can access admin routes
+    const officerRolesForAdmin = ['loan_officer', 'md_finance', 'ops_director', 'ceo', 'finance_officer'];
+    if (requiredRole === 'admin' && profile?.role && officerRolesForAdmin.includes(profile.role)) {
       return <>{children}</>;
     }
 

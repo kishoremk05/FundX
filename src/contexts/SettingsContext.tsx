@@ -250,7 +250,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             setError(null);
 
             const settingsRef = collection(db, 'settings');
-            const snapshot = await getDocs(settingsRef);
+            let snapshot;
+
+            if (user) {
+                // Authenticated users can fetch all settings (rules will still restrict sensitive ones based on role if needed)
+                snapshot = await getDocs(settingsRef);
+            } else {
+                // Unauthenticated users only fetch safe, public categories
+                const publicCategories = ['company', 'app', 'theme', 'landing', 'seo'];
+                const q = query(settingsRef, where('category', 'in', publicCategories));
+                snapshot = await getDocs(q);
+            }
 
             const loadedSettings = { ...defaultSettings };
 

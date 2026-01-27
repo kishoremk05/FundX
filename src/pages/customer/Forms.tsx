@@ -16,57 +16,36 @@ const Forms = () => {
         const fetchActiveApp = async () => {
             if (!user) return;
             try {
+                // REMOVED orderBy to prevent "Missing Index" errors in console.
                 const q = query(
                     collection(db, "loan_applications"),
                     where("customer_id", "==", user.uid),
-                    orderBy("applied_at", "desc"),
-                    limit(1)
+                    limit(10) // Fetch a few to ensure we find the latest
                 );
                 const snap = await getDocs(q);
                 if (!snap.empty) {
-                    const id = snap.docs[0].id;
-                    console.log("Found primary active application:", id);
+                    // Manual sort by date - handle both Timestamps and strings
+                    const docs = snap.docs.map(d => ({ id: d.id, data: d.data() as any }));
+
+                    docs.sort((a, b) => {
+                        const getVal = (item: any) => {
+                            const val = item.applied_at || item.created_at;
+                            if (val && typeof val.toMillis === 'function') return val.toMillis();
+                            if (val && typeof val.seconds === 'number') return val.seconds * 1000;
+                            if (typeof val === 'string') return new Date(val).getTime();
+                            return 0;
+                        };
+                        return getVal(b.data) - getVal(a.data);
+                    });
+
+                    const id = docs[0].id;
+                    console.log("Found active application:", id);
                     setActiveAppId(id);
                 } else {
-                    console.log("No primary application found, attempting fallback...");
-                    throw { code: 'not-found' }; // Trigger fallback
+                    console.log("No applications found for user.");
                 }
             } catch (error: any) {
-                console.warn("Could not fetch application with ordering (index missing/none found):", error.code);
-
-                try {
-                    // FALLBACK: Simplest possible query to get ANYTHING belonging to the user
-                    const fallbackQ = query(
-                        collection(db, "loan_applications"),
-                        where("customer_id", "==", user.uid),
-                        limit(10)
-                    );
-                    const fallbackSnap = await getDocs(fallbackQ);
-
-                    if (!fallbackSnap.empty) {
-                        // Manual sort by date - handle both Timestamps and strings
-                        const docs = fallbackSnap.docs.map(d => ({ id: d.id, data: d.data() as any }));
-
-                        docs.sort((a, b) => {
-                            const getVal = (item: any) => {
-                                const val = item.applied_at || item.created_at;
-                                if (val && typeof val.toMillis === 'function') return val.toMillis();
-                                if (val && typeof val.seconds === 'number') return val.seconds * 1000;
-                                if (typeof val === 'string') return new Date(val).getTime();
-                                return 0;
-                            };
-                            return getVal(b.data) - getVal(a.data);
-                        });
-
-                        const id = docs[0].id;
-                        console.log("Fallback found application:", id);
-                        setActiveAppId(id);
-                    } else {
-                        console.warn("No applications found for user even with fallback.");
-                    }
-                } catch (fallbackError) {
-                    console.error("Absolute failure fetching user applications:", fallbackError);
-                }
+                console.error("Error fetching active application:", error);
             } finally {
                 setLoading(false);
             }

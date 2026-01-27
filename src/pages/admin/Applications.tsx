@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, query, orderBy, getDocs, doc, updateDoc, writeBatch, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, updateDoc, writeBatch, where, onSnapshot, documentId } from 'firebase/firestore';
 import type { LoanApplication, Profile, LoanProduct } from '@/lib/database.types';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +59,7 @@ type ApplicationWithDetails = LoanApplication & {
 };
 
 export default function Applications() {
+  const { profile, isAdmin } = useAuth();
   const [applications, setApplications] = useState<ApplicationWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState<ApplicationWithDetails | null>(null);
@@ -65,6 +67,13 @@ export default function Applications() {
   const [reviewing, setReviewing] = useState(false);
   const [allProducts, setAllProducts] = useState<LoanProduct[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
+
+  // Check if current user can approve at the given stage
+  // ONLY officers with matching assigned_stage can approve - admins CANNOT approve
+  const canApproveStage = (appStage: number) => {
+    // Only officers with assigned_stage matching the application stage can approve
+    return profile?.assigned_stage === appStage;
+  };
 
   useEffect(() => {
     const appsRef = collection(db, 'loan_applications');
@@ -84,7 +93,7 @@ export default function Applications() {
         const chunks = [];
         for (let i = 0; i < customerIds.length; i += 10) chunks.push(customerIds.slice(i, i + 10));
         for (const chunk of chunks) {
-          const qCustomers = query(collection(db, 'profiles'), where('id', 'in', chunk));
+          const qCustomers = query(collection(db, 'profiles'), where(documentId(), 'in', chunk));
           const snap = await getDocs(qCustomers);
           snap.forEach(doc => customersMap[doc.id] = doc.data() as Profile);
         }
@@ -94,7 +103,7 @@ export default function Applications() {
         const chunks = [];
         for (let i = 0; i < productIds.length; i += 10) chunks.push(productIds.slice(i, i + 10));
         for (const chunk of chunks) {
-          const qProducts = query(collection(db, 'loan_products'), where('id', 'in', chunk));
+          const qProducts = query(collection(db, 'loan_products'), where(documentId(), 'in', chunk));
           const snap = await getDocs(qProducts);
           snap.forEach(doc => productsMap[doc.id] = { ...doc.data(), id: doc.id } as LoanProduct);
         }
@@ -136,6 +145,10 @@ export default function Applications() {
       if (decision === 'rejected') {
         await updateDoc(appRef, {
           status: 'rejected',
+          rejection_reason: reviewNotes,
+          rejection_stage: currentStep,
+          rejected_by: auth.currentUser?.uid,
+          rejected_at: new Date().toISOString(),
           reviewed_at: new Date().toISOString(),
           reviewer_id: auth.currentUser?.uid,
           notes: reviewNotes
@@ -148,6 +161,7 @@ export default function Applications() {
           const nextStep = currentStep + 1;
           await updateDoc(appRef, {
             current_step: nextStep,
+            product_id: selectedApp.product_id, // Persist product assignment
             updated_at: new Date().toISOString(),
             last_approved_by: auth.currentUser?.uid,
             notes: reviewNotes
@@ -567,7 +581,14 @@ export default function Applications() {
                         <div className="w-1 h-3 bg-amber-500 rounded-full" /> Loan Terms
                       </Label>
 
-                      {(selectedApp.product.name === 'Unknown Product' || !selectedApp.product_id) && (
+                      {selectedApp.product.name !== 'Unknown Product' && selectedApp.product_id ? (
+                        <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                          <Label className="text-[9px] uppercase font-black text-emerald-600 leading-none shrink-0">Assigned Protocol:</Label>
+                          <Badge variant="outline" className="text-[10px] font-black uppercase bg-emerald-50 text-emerald-600 border-emerald-200">
+                            {selectedApp.product.name}
+                          </Badge>
+                        </div>
+                      ) : (
                         <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/20">
                           <Label className="text-[9px] uppercase font-black text-primary leading-none shrink-0">Assign Product:</Label>
                           <Select
@@ -575,7 +596,7 @@ export default function Applications() {
                             onValueChange={(val) => {
                               setSelectedProductId(val);
                               const p = allProducts.find(prod => prod.id === val);
-                              if (p && selectedApp) setSelectedApp({ ...selectedApp, product: p });
+                              if (p && selectedApp) setSelectedApp({ ...selectedApp, product: p, product_id: p.id });
                             }}
                           >
                             <SelectTrigger className="h-7 w-[160px] text-[9px] font-black uppercase tracking-wider bg-background border-primary/20">
@@ -682,7 +703,8 @@ export default function Applications() {
             </Button>
 
             {(selectedApp?.status === 'pending' || selectedApp?.status === 'approved' || selectedApp?.current_step === 5) &&
-              selectedApp?.status !== 'rejected' && selectedApp?.status !== 'disbursed' && (
+              selectedApp?.status !== 'rejected' && selectedApp?.status !== 'disbursed' &&
+              canApproveStage(selectedApp?.current_step || 1) && (
                 <div className="flex gap-4 ml-auto">
                   <Button
                     variant="outline"

@@ -24,18 +24,24 @@ service cloud.firestore {
         get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['admin', 'Super_admin', 'branch_manager'];
     }
     
-    // Loan officers and above (includes accountants)
+    // All staff roles that can manage loans (includes all officer types)
     function isLoanOfficer() {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['admin', 'Super_admin', 'branch_manager', 'loan_officer', 'accountant'];
+        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in [
+          'admin', 'Super_admin', 'branch_manager', 'loan_officer', 'accountant',
+          'ops_director', 'md_finance', 'ceo', 'finance_officer'
+        ];
     }
     
     // Staff member (any role except customer)
     function isStaff() {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['admin', 'Super_admin', 'branch_manager', 'loan_officer', 'accountant'];
+        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in [
+          'admin', 'Super_admin', 'branch_manager', 'loan_officer', 'accountant',
+          'ops_director', 'md_finance', 'ceo', 'finance_officer'
+        ];
     }
     
     function isOwner(userId) {
@@ -184,8 +190,8 @@ service cloud.firestore {
     // SETTINGS
     // ============================================
     match /settings/{settingId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read: if isAuthenticated() || (resource.data.category in ['company', 'app', 'theme', 'landing', 'seo']);
+      allow write: if isStaff() || isAdmin();
     }
 
     match /permissions/{permissionId} {
