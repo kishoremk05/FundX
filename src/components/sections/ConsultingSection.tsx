@@ -37,9 +37,6 @@ const ConsultingSection = () => {
               Expert business advisory and professional services
             </p>
           </div>
-          <Button variant="outline" className="mt-4 md:mt-0">
-            View All
-          </Button>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">

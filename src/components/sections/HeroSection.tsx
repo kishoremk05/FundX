@@ -31,7 +31,7 @@ const HeroSection = () => {
   ];
 
   return (
-    <section className="section-padding bg-background">
+    <section className="px-4 sm:px-6 lg:px-8 pt-2 pb-8 lg:pt-4 lg:pb-12 bg-background">
       <div className="container-custom">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
@@ -109,8 +109,8 @@ const HeroSection = () => {
                     key={index}
                     onClick={() => setCurrentSlide(index)}
                     className={`w-2.5 h-2.5 rounded-full transition-colors ${index === currentSlide
-                        ? "bg-primary"
-                        : "bg-white/50 hover:bg-white/70"
+                      ? "bg-primary"
+                      : "bg-white/50 hover:bg-white/70"
                       }`}
                     aria-label={`Go to slide ${index + 1}`}
                   />

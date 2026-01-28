@@ -8,6 +8,31 @@ interface AuthGuardProps {
   requiredRole?: 'admin' | 'customer' | 'loan_officer' | 'branch_manager' | 'md_finance';
 }
 
+// All roles that are NOT customers - they can access admin panel
+const STAFF_ROLES = [
+  'admin',
+  'ceo',
+  'md',
+  'director_of_finance',
+  'director_of_operation',
+  'operational_director',
+  'md_finance_director',
+  'finance_disbursement_officer',
+  'legal_officer',
+  'coordinator_admin_it',
+  'head_of_human_resource',
+  'secretary',
+  'loan_officer',
+  'branch_manager_mbeya',
+  'branch_manager_dar',
+  'branch_manager_dodoma',
+  'branch_manager_chunya',
+  'branch_manager',
+  'md_finance',
+  'ops_director',
+  'finance_officer',
+];
+
 export function AuthGuard({ children, requireAuth = true, requiredRole }: AuthGuardProps) {
   const { user, profile, loading, profileError } = useAuth();
   const location = useLocation();
@@ -35,9 +60,8 @@ export function AuthGuard({ children, requireAuth = true, requiredRole }: AuthGu
       );
     }
     // Redirect authenticated users away from auth pages based on their role
-    const officerRoles = ['admin', 'loan_officer', 'md_finance', 'ops_director', 'ceo', 'finance_officer'];
-    const isOfficerOrAdmin = profile?.role && officerRoles.includes(profile.role);
-    const redirectTo = isOfficerOrAdmin ? '/admin' : '/customer';
+    const isStaff = profile?.role && STAFF_ROLES.includes(profile.role);
+    const redirectTo = isStaff ? '/admin' : '/customer';
     return <Navigate to={redirectTo} replace />;
   }
 
@@ -51,9 +75,8 @@ export function AuthGuard({ children, requireAuth = true, requiredRole }: AuthGu
       );
     }
 
-    // Special case: all officer roles can access admin routes
-    const officerRolesForAdmin = ['loan_officer', 'md_finance', 'ops_director', 'ceo', 'finance_officer'];
-    if (requiredRole === 'admin' && profile?.role && officerRolesForAdmin.includes(profile.role)) {
+    // Any staff role can access admin routes
+    if (requiredRole === 'admin' && profile?.role && STAFF_ROLES.includes(profile.role)) {
       return <>{children}</>;
     }
 

@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -43,6 +44,54 @@ import { Label } from '@/components/ui/label';
 import { Search, Plus, MoreHorizontal, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+// Available permissions/features that can be assigned to users
+const AVAILABLE_PERMISSIONS = [
+  { id: 'dashboard', label: 'Dashboard', description: 'View dashboard and statistics' },
+  { id: 'applications', label: 'Applications', description: 'View and assess loan applications (Officers only)' },
+  { id: 'borrowers', label: 'Borrowers', description: 'Manage borrowers' },
+  { id: 'loans', label: 'Loans', description: 'View and manage loans' },
+  { id: 'repayments', label: 'Repayments', description: 'Manage repayments' },
+  { id: 'reports', label: 'Reports', description: 'View and generate reports' },
+  { id: 'branches', label: 'Branches', description: 'Manage branches' },
+  { id: 'users', label: 'Users & Roles', description: 'Manage users and roles' },
+  { id: 'loan_types', label: 'Loan Types', description: 'Manage loan products' },
+  { id: 'accounts', label: 'Accounts', description: 'Manage accounts' },
+  { id: 'expenses', label: 'Expenses', description: 'Manage expenses' },
+  { id: 'contacts', label: 'Contacts', description: 'Manage contacts' },
+  { id: 'notes', label: 'Notes', description: 'Manage notes' },
+  { id: 'settings', label: 'Settings', description: 'Access settings' },
+];
+
+// Predefined roles with their default permissions
+// Note: 'applications' permission is only for loan approval officers
+const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin', defaultPermissions: AVAILABLE_PERMISSIONS.map(p => p.id) },
+  { value: 'ceo', label: 'CEO', defaultPermissions: ['dashboard', 'applications', 'borrowers', 'loans', 'repayments', 'reports', 'branches', 'users', 'loan_types', 'accounts', 'expenses', 'settings'] },
+  { value: 'md', label: 'MD', defaultPermissions: ['dashboard', 'applications', 'borrowers', 'loans', 'repayments', 'reports', 'branches', 'loan_types', 'accounts', 'expenses'] },
+  { value: 'director_of_finance', label: 'Director of Finance', defaultPermissions: ['dashboard', 'applications', 'loans', 'repayments', 'reports', 'accounts', 'expenses'] },
+  { value: 'director_of_operation', label: 'Director of Operation', defaultPermissions: ['dashboard', 'applications', 'borrowers', 'loans', 'repayments', 'reports', 'branches'] },
+  { value: 'operational_director', label: 'Operational Director', defaultPermissions: ['dashboard', 'applications', 'borrowers', 'loans', 'repayments', 'reports', 'branches'] },
+  { value: 'md_finance_director', label: 'MD/Finance Director', defaultPermissions: ['dashboard', 'applications', 'loans', 'repayments', 'reports', 'accounts', 'expenses', 'branches'] },
+  { value: 'finance_disbursement_officer', label: 'Finance Disbursement Officer', defaultPermissions: ['dashboard', 'applications', 'loans', 'repayments', 'reports', 'accounts'] },
+  { value: 'legal_officer', label: 'Legal Officer', defaultPermissions: ['dashboard', 'borrowers', 'loans', 'reports'] },
+  { value: 'coordinator_admin_it', label: 'Coordinator/Admin/IT', defaultPermissions: ['dashboard', 'users', 'settings', 'reports'] },
+  { value: 'head_of_human_resource', label: 'Head of Human Resource', defaultPermissions: ['dashboard', 'users', 'reports', 'expenses'] },
+  { value: 'secretary', label: 'Secretary', defaultPermissions: ['dashboard', 'contacts', 'notes'] },
+  { value: 'loan_officer', label: 'Loan Officer', defaultPermissions: ['dashboard', 'applications', 'borrowers', 'loans', 'repayments'] },
+  { value: 'branch_manager_mbeya', label: 'Branch Manager Mbeya', defaultPermissions: ['dashboard', 'borrowers', 'loans', 'repayments', 'reports'] },
+  { value: 'branch_manager_dar', label: 'Branch Manager Dar', defaultPermissions: ['dashboard', 'borrowers', 'loans', 'repayments', 'reports'] },
+  { value: 'branch_manager_dodoma', label: 'Branch Manager Dodoma', defaultPermissions: ['dashboard', 'borrowers', 'loans', 'repayments', 'reports'] },
+  { value: 'branch_manager_chunya', label: 'Branch Manager Chunya', defaultPermissions: ['dashboard', 'borrowers', 'loans', 'repayments', 'reports'] },
+];
+
+// Roles that have approval stage assignment
+const APPROVAL_STAGE_ROLES = [
+  'loan_officer',
+  'operational_director', 
+  'md_finance_director',
+  'finance_disbursement_officer',
+];
+
 export default function Users() {
   const { toast } = useToast();
   const queryOptions = useMemo(() => ({
@@ -67,6 +116,7 @@ export default function Users() {
     role: 'loan_officer' as string,
     custom_role: '',
     assigned_stage: 1,
+    permissions: ['dashboard', 'borrowers', 'loans', 'repayments'] as string[],
   });
 
   const filteredUsers = users.filter(user =>
@@ -77,23 +127,44 @@ export default function Users() {
   const getRoleBadge = (role: string) => {
     const styles: Record<string, string> = {
       admin: 'bg-orange-100 text-orange-700',
+      ceo: 'bg-purple-100 text-purple-700',
+      md: 'bg-indigo-100 text-indigo-700',
+      director_of_finance: 'bg-emerald-100 text-emerald-700',
+      director_of_operation: 'bg-cyan-100 text-cyan-700',
       loan_officer: 'bg-blue-100 text-blue-700',
       branch_manager: 'bg-green-100 text-green-700',
       customer: 'bg-gray-100 text-gray-600',
     };
 
-    const labels: Record<string, string> = {
-      admin: 'Admin',
-      loan_officer: 'Loan Officer',
-      branch_manager: 'Branch Manager',
-      customer: 'Customer',
-    };
+    // Find role label
+    const roleOption = ROLE_OPTIONS.find(r => r.value === role);
+    const label = roleOption?.label || role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
     return (
-      <Badge className={cn("font-medium text-xs", styles[role] || styles.customer)}>
-        {labels[role] || role}
+      <Badge className={cn("font-medium text-xs", styles[role] || 'bg-gray-100 text-gray-700')}>
+        {label}
       </Badge>
     );
+  };
+
+  const handleRoleChange = (role: string) => {
+    const roleOption = ROLE_OPTIONS.find(r => r.value === role);
+    const defaultPermissions = roleOption?.defaultPermissions || [];
+    setFormData({ 
+      ...formData, 
+      role, 
+      custom_role: '',
+      permissions: defaultPermissions 
+    });
+  };
+
+  const handlePermissionToggle = (permissionId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      permissions: prev.permissions.includes(permissionId)
+        ? prev.permissions.filter(p => p !== permissionId)
+        : [...prev.permissions, permissionId]
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,6 +179,7 @@ export default function Users() {
           full_name: formData.full_name,
           role: finalRole,
           assigned_stage: formData.assigned_stage,
+          permissions: formData.permissions,
         });
         toast({
           title: 'User Updated',
@@ -136,6 +208,7 @@ export default function Users() {
           full_name: formData.full_name,
           role: finalRole,
           assigned_stage: formData.assigned_stage,
+          permissions: formData.permissions,
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -150,7 +223,7 @@ export default function Users() {
       }
       setDialogOpen(false);
       setEditingUser(null);
-      setFormData({ email: '', password: '', full_name: '', role: 'loan_officer', custom_role: '', assigned_stage: 1 });
+      setFormData({ email: '', password: '', full_name: '', role: 'loan_officer', custom_role: '', assigned_stage: 1, permissions: ['dashboard', 'borrowers', 'loans', 'repayments'] });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
@@ -160,13 +233,15 @@ export default function Users() {
 
   const openEditDialog = (user: Profile) => {
     setEditingUser(user);
+    const roleOption = ROLE_OPTIONS.find(r => r.value === user.role);
     setFormData({
       email: user.email || '',
       password: '',
       full_name: user.full_name || '',
-      role: user.role || 'loan_officer',
-      custom_role: '',
+      role: roleOption ? user.role : 'loan_officer',
+      custom_role: roleOption ? '' : (user.role || ''),
       assigned_stage: user.assigned_stage || 1,
+      permissions: (user as any).permissions || roleOption?.defaultPermissions || ['dashboard'],
     });
     setDialogOpen(true);
   };
@@ -198,7 +273,7 @@ export default function Users() {
           setDialogOpen(open);
           if (!open) {
             setEditingUser(null);
-            setFormData({ email: '', password: '', full_name: '', role: 'loan_officer', custom_role: '', assigned_stage: 1 });
+            setFormData({ email: '', password: '', full_name: '', role: 'loan_officer', custom_role: '', assigned_stage: 1, permissions: ['dashboard', 'borrowers', 'loans', 'repayments'] });
           }
         }}>
           <DialogTrigger asChild>
@@ -207,11 +282,11 @@ export default function Users() {
               Add User
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingUser ? 'Edit User' : 'Add User'}</DialogTitle>
               <DialogDescription>
-                {editingUser ? 'Update user information' : 'Add a new staff member'}
+                {editingUser ? 'Update user information and permissions' : 'Add a new staff member'}
               </DialogDescription>
             </DialogHeader>
 
@@ -256,19 +331,17 @@ export default function Users() {
                 <Label>Role</Label>
                 <Select
                   value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value, custom_role: '' })}
+                  onValueChange={handleRoleChange}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="loan_officer">Stage 1 - Loan Officer</SelectItem>
-                    <SelectItem value="ops_director">Stage 2 - Operational Director</SelectItem>
-                    <SelectItem value="md_finance">Stage 3 - MD/Finance Director</SelectItem>
-                    <SelectItem value="ceo">Stage 4 - CEO</SelectItem>
-                    <SelectItem value="finance_officer">Stage 5 - Finance Disbursement</SelectItem>
-                    <SelectItem value="branch_manager">Branch Manager</SelectItem>
+                    {ROLE_OPTIONS.map(role => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
                     <SelectItem value="custom">Custom Role...</SelectItem>
                   </SelectContent>
                 </Select>
@@ -287,8 +360,33 @@ export default function Users() {
                 </div>
               )}
 
-              {/* Assigned Stage - for officer roles */}
-              {['loan_officer', 'ops_director', 'md_finance', 'ceo', 'finance_officer', 'custom'].includes(formData.role) && (
+              {/* Permissions Section */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Permissions</Label>
+                <p className="text-xs text-muted-foreground">
+                  Select which features this user can access
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 border rounded-lg bg-muted/30">
+                  {AVAILABLE_PERMISSIONS.map((permission) => (
+                    <div key={permission.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={permission.id}
+                        checked={formData.permissions.includes(permission.id)}
+                        onCheckedChange={() => handlePermissionToggle(permission.id)}
+                      />
+                      <label
+                        htmlFor={permission.id}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {permission.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Assigned Stage - only for approval workflow roles */}
+              {APPROVAL_STAGE_ROLES.includes(formData.role) && (
                 <div className="space-y-2">
                   <Label>Assigned Approval Stage</Label>
                   <Select

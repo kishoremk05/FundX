@@ -49,26 +49,27 @@ interface NavigationItem {
   href?: string;
   icon: React.ElementType;
   children?: NavigationItem[];
+  permission?: string;
 }
 
-// Navigation structure matching reference design
+// Navigation structure matching reference design with permission keys
 const mainNavigation: NavigationItem[] = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Applications', href: '/admin/applications', icon: FileText },
-  { name: 'Borrowers', href: '/admin/borrowers', icon: Users },
-  { name: 'Loans', href: '/admin/loans', icon: CreditCard },
-  { name: 'Repayments', href: '/admin/repayments', icon: RefreshCw },
-  { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
+  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, permission: 'dashboard' },
+  { name: 'Applications', href: '/admin/applications', icon: FileText, permission: 'applications' },
+  { name: 'Borrowers', href: '/admin/borrowers', icon: Users, permission: 'borrowers' },
+  { name: 'Loans', href: '/admin/loans', icon: CreditCard, permission: 'loans' },
+  { name: 'Repayments', href: '/admin/repayments', icon: RefreshCw, permission: 'repayments' },
+  { name: 'Reports', href: '/admin/reports', icon: BarChart3, permission: 'reports' },
 ];
 
 const managementNavigation: NavigationItem[] = [
-  { name: 'Branches', href: '/admin/branches', icon: Building2 },
-  { name: 'Users & Roles', href: '/admin/users', icon: UserCog },
-  { name: 'Loan Types', href: '/admin/products', icon: Package },
-  { name: 'Accounts', href: '/admin/accounts', icon: Wallet },
-  { name: 'Expenses', href: '/admin/expenses', icon: Receipt },
-  { name: 'Contacts', href: '/admin/contacts', icon: MessageSquare },
-  { name: 'Notes', href: '/admin/notes', icon: StickyNote },
+  { name: 'Branches', href: '/admin/branches', icon: Building2, permission: 'branches' },
+  { name: 'Users & Roles', href: '/admin/users', icon: UserCog, permission: 'users' },
+  { name: 'Loan Types', href: '/admin/products', icon: Package, permission: 'loan_types' },
+  { name: 'Accounts', href: '/admin/accounts', icon: Wallet, permission: 'accounts' },
+  { name: 'Expenses', href: '/admin/expenses', icon: Receipt, permission: 'expenses' },
+  { name: 'Contacts', href: '/admin/contacts', icon: MessageSquare, permission: 'contacts' },
+  { name: 'Notes', href: '/admin/notes', icon: StickyNote, permission: 'notes' },
 ];
 
 const systemNavigation: NavigationItem[] = [
@@ -152,17 +153,16 @@ function NavItem({ item, pathname }: { item: NavigationItem; pathname: string })
   );
 }
 
-function SidebarContent({ signOut, pathname, userRole }: { signOut: () => void; pathname: string; userRole?: string }) {
-  // All officer roles that can only see Applications
-  const officerRoles = ['loan_officer', 'md_finance', 'ops_director', 'ceo', 'finance_officer'];
-  const isOfficer = userRole && officerRoles.includes(userRole);
+function SidebarContent({ signOut, pathname, userRole, userPermissions }: { signOut: () => void; pathname: string; userRole?: string; userPermissions?: string[] }) {
+  // Admin has all permissions
+  const permissions: string[] = userRole === 'admin' 
+    ? ['dashboard', 'applications', 'borrowers', 'loans', 'repayments', 'reports', 'branches', 'users', 'loan_types', 'accounts', 'expenses', 'contacts', 'notes', 'settings']
+    : userPermissions || [];
 
-  const filteredMainNav = isOfficer
-    ? mainNavigation.filter(item => item.name === 'Applications')
-    : mainNavigation;
-
-  const showManagement = !isOfficer;
-  const showSystem = !isOfficer;
+  // Filter navigation based on user permissions
+  const filteredMainNav = mainNavigation.filter(item => !item.permission || permissions.includes(item.permission));
+  const filteredManagementNav = managementNavigation.filter(item => !item.permission || permissions.includes(item.permission));
+  const showSystem = permissions.includes('settings');
 
   return (
     <div className="flex flex-col h-full bg-card border-r border-border">
@@ -182,32 +182,34 @@ function SidebarContent({ signOut, pathname, userRole }: { signOut: () => void; 
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         {/* MAIN Section */}
-        <div className="mb-6">
-          <p className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Main
-          </p>
-          <nav className="space-y-1">
-            {filteredMainNav.map((item) => (
-              <NavItem key={item.name} item={item} pathname={pathname} />
-            ))}
-          </nav>
-        </div>
-
-        {/* MANAGEMENT Section - hidden for officers */}
-        {showManagement && (
+        {filteredMainNav.length > 0 && (
           <div className="mb-6">
             <p className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Management
+              Main
             </p>
             <nav className="space-y-1">
-              {managementNavigation.map((item) => (
+              {filteredMainNav.map((item) => (
                 <NavItem key={item.name} item={item} pathname={pathname} />
               ))}
             </nav>
           </div>
         )}
 
-        {/* SYSTEM Section - hidden for officers */}
+        {/* MANAGEMENT Section */}
+        {filteredManagementNav.length > 0 && (
+          <div className="mb-6">
+            <p className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Management
+            </p>
+            <nav className="space-y-1">
+              {filteredManagementNav.map((item) => (
+                <NavItem key={item.name} item={item} pathname={pathname} />
+              ))}
+            </nav>
+          </div>
+        )}
+
+        {/* SYSTEM Section */}
         {showSystem && (
           <div className="mb-6">
             <p className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -243,14 +245,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const displayName = profile?.full_name || 'Admin User';
-  const displayRole = profile?.role === 'admin' ? 'Super Admin' : profile?.role || 'Admin';
+  const displayRole = profile?.role === 'admin' ? 'Super Admin' : profile?.role?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Admin';
+  const userPermissions = (profile as any)?.permissions || [];
 
   return (
     <div className="min-h-screen bg-background">
       <div className="flex h-screen overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className="hidden lg:block w-64 shrink-0">
-          <SidebarContent signOut={signOut} pathname={location.pathname} userRole={profile?.role} />
+          <SidebarContent signOut={signOut} pathname={location.pathname} userRole={profile?.role} userPermissions={userPermissions} />
         </aside>
 
         {/* Mobile Sidebar */}
@@ -261,7 +264,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0 border-none">
-            <SidebarContent signOut={signOut} pathname={location.pathname} userRole={profile?.role} />
+            <SidebarContent signOut={signOut} pathname={location.pathname} userRole={profile?.role} userPermissions={userPermissions} />
           </SheetContent>
         </Sheet>
 

@@ -28,17 +28,18 @@ const ContactSection = () => {
     {
       icon: Phone,
       title: "Phone Numbers",
-      details: ["+255 787 188 323", "+255 656 415 727", "+255 754 469 917", "+255 758 868 578"],
+      details: ["CEO: +255 789 670 696", "MD: +255 754 469 917", "HR: +255 755 651 526"],
     },
     {
       icon: Mail,
       title: "Email",
-      details: ["kopwe9546@gmail.com"],
+      details: ["support@kepmicrocredit.com"],
+      isEmail: true,
     },
     {
       icon: MapPin,
       title: "Postal Address",
-      details: ["P.O. Box 6559", "Mbeya, Tanzania"],
+      details: ["S.L.P 1725", "Mbeya, Tanzania"],
     },
     {
       icon: Globe,
@@ -107,9 +108,15 @@ const ContactSection = () => {
                 <div>
                   <h4 className="font-semibold text-foreground mb-1">{item.title}</h4>
                   {item.details.map((detail) => (
-                    <p key={detail} className="text-muted-foreground text-sm">
-                      {detail}
-                    </p>
+                    item.isEmail ? (
+                      <a key={detail} href={`mailto:${detail}`} className="text-primary text-sm hover:underline block">
+                        {detail}
+                      </a>
+                    ) : (
+                      <p key={detail} className="text-muted-foreground text-sm">
+                        {detail}
+                      </p>
+                    )
                   ))}
                 </div>
               </div>

@@ -21,33 +21,44 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// Navigation items with permission keys
 const mainNavigation = [
-  { name: 'DASHBOARD - VERIFIED', href: '/admin', icon: LayoutDashboard },
-  { name: 'Borrowers', href: '/admin/borrowers', icon: Users },
-  { name: 'Loans', href: '/admin/loans', icon: CreditCard },
-  { name: 'Repayments', href: '/admin/repayments', icon: Receipt },
-  { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
-  { name: 'Applications', href: '/admin/applications', icon: FileText },
+  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, permission: 'dashboard' },
+  { name: 'Applications', href: '/admin/applications', icon: FileText, permission: 'applications' },
+  { name: 'Borrowers', href: '/admin/borrowers', icon: Users, permission: 'borrowers' },
+  { name: 'Loans', href: '/admin/loans', icon: CreditCard, permission: 'loans' },
+  { name: 'Repayments', href: '/admin/repayments', icon: Receipt, permission: 'repayments' },
+  { name: 'Reports', href: '/admin/reports', icon: BarChart3, permission: 'reports' },
 ];
 
 const managementNavigation = [
-  { name: 'Branches', href: '/admin/branches', icon: Building2 },
-  { name: 'Users & Roles', href: '/admin/users', icon: UserCog },
-  { name: 'Loan Types', href: '/admin/products', icon: Package },
-  { name: 'Accounts', href: '/admin/accounts', icon: Wallet },
-  { name: 'Expenses', href: '/admin/expenses', icon: DollarSign },
-  { name: 'Contacts', href: '/admin/contacts', icon: Contact },
-  { name: 'Notes', href: '/admin/notes', icon: StickyNote },
+  { name: 'Branches', href: '/admin/branches', icon: Building2, permission: 'branches' },
+  { name: 'Users & Roles', href: '/admin/users', icon: UserCog, permission: 'users' },
+  { name: 'Loan Types', href: '/admin/products', icon: Package, permission: 'loan_types' },
+  { name: 'Accounts', href: '/admin/accounts', icon: Wallet, permission: 'accounts' },
+  { name: 'Expenses', href: '/admin/expenses', icon: DollarSign, permission: 'expenses' },
+  { name: 'Contacts', href: '/admin/contacts', icon: Contact, permission: 'contacts' },
+  { name: 'Notes', href: '/admin/notes', icon: StickyNote, permission: 'notes' },
 ];
 
 const systemNavigation = [
-  { name: 'Settings', href: '/admin/settings', icon: Settings, hasSubmenu: true },
+  { name: 'Settings', href: '/admin/settings', icon: Settings, hasSubmenu: true, permission: 'settings' },
 ];
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
+
+  // Get user permissions - admin has all permissions
+  const userPermissions: string[] = profile?.role === 'admin' 
+    ? ['dashboard', 'applications', 'borrowers', 'loans', 'repayments', 'reports', 'branches', 'users', 'loan_types', 'accounts', 'expenses', 'contacts', 'notes', 'settings']
+    : (profile as any)?.permissions || [];
+
+  // Filter navigation items based on permissions
+  const filteredMainNav = mainNavigation.filter(item => userPermissions.includes(item.permission));
+  const filteredManagementNav = managementNavigation.filter(item => userPermissions.includes(item.permission));
+  const filteredSystemNav = systemNavigation.filter(item => userPermissions.includes(item.permission));
 
   const handleSignOut = async () => {
     await signOut();
@@ -94,32 +105,38 @@ export default function Sidebar() {
 
       {/* Main Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
-        <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold text-white/40 uppercase tracking-wider">Main</p>
-          <div className="space-y-1">
-            {mainNavigation.map((item) => (
-              <NavLink key={item.name} item={item} />
-            ))}
+        {filteredMainNav.length > 0 && (
+          <div>
+            <p className="px-3 mb-2 text-[10px] font-semibold text-white/40 uppercase tracking-wider">Main</p>
+            <div className="space-y-1">
+              {filteredMainNav.map((item) => (
+                <NavLink key={item.name} item={item} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold text-white/40 uppercase tracking-wider">Management</p>
-          <div className="space-y-1">
-            {managementNavigation.map((item) => (
-              <NavLink key={item.name} item={item} />
-            ))}
+        {filteredManagementNav.length > 0 && (
+          <div>
+            <p className="px-3 mb-2 text-[10px] font-semibold text-white/40 uppercase tracking-wider">Management</p>
+            <div className="space-y-1">
+              {filteredManagementNav.map((item) => (
+                <NavLink key={item.name} item={item} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold text-white/40 uppercase tracking-wider">System</p>
-          <div className="space-y-1">
-            {systemNavigation.map((item) => (
-              <NavLink key={item.name} item={item} />
-            ))}
+        {filteredSystemNav.length > 0 && (
+          <div>
+            <p className="px-3 mb-2 text-[10px] font-semibold text-white/40 uppercase tracking-wider">System</p>
+            <div className="space-y-1">
+              {filteredSystemNav.map((item) => (
+                <NavLink key={item.name} item={item} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </nav>
 
       {/* Sign Out */}

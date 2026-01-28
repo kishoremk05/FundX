@@ -5,8 +5,8 @@ const client = new Client();
 
 // Configure Appwrite - UPDATE THESE VALUES WITH YOUR APPWRITE CREDENTIALS
 const APPWRITE_ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
-const APPWRITE_PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID || 'YOUR_PROJECT_ID';
-const APPWRITE_BUCKET_ID = import.meta.env.VITE_APPWRITE_BUCKET_ID || '696e77640027c48e2173';
+const APPWRITE_PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID || '';
+const APPWRITE_BUCKET_ID = import.meta.env.VITE_APPWRITE_BUCKET_ID || '';
 
 client
     .setEndpoint(APPWRITE_ENDPOINT)

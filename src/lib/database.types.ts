@@ -27,6 +27,7 @@ export type Database = {
                     language: string
                     theme: 'light' | 'dark' | 'system'
                     assigned_stage: number | null
+                    permissions: string[] | null
                     created_at: string
                     updated_at: string
                 }
@@ -45,6 +46,7 @@ export type Database = {
                     language?: string
                     theme?: 'light' | 'dark' | 'system'
                     assigned_stage?: number | null
+                    permissions?: string[] | null
                     created_at?: string
                     updated_at?: string
                 }

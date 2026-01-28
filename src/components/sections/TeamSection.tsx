@@ -5,22 +5,39 @@ const TeamSection = () => {
 
   const leaders = [
     {
+      name: "FELIX FOCUS MUSHI",
       title: "CEO",
       role: "Chief Executive Officer",
       description: "Leading KEP Microcredit's vision to provide accessible financial services and empower entrepreneurs.",
       image: "/team-ceo.jpg",
     },
     {
+      name: "ZUBERI KOPWE",
       title: "Managing Director",
       role: "Managing Director",
       description: "Overseeing daily operations and strategic initiatives to ensure excellent service delivery.",
       image: "/team-md.jpg",
     },
     {
-      title: "Head of HR",
+      name: "BOAZI SIMONI MWASIPU",
+      title: "HEAD OF HUMAN RESOURCE",
       role: "Head of Human Resources",
       description: "Building and nurturing a talented team committed to exceptional customer service.",
       image: "/team-hr.jpg",
+    },
+    {
+      name: "STEWART MBEGU",
+      title: "DIRECTOR OF FINANCE",
+      role: "Director of Finance",
+      description: "Managing financial operations and ensuring fiscal responsibility across all departments.",
+      image: "/team-finance.jpg",
+    },
+    {
+      name: "IBRAHIM JUMA KAJULA",
+      title: "DIRECTOR OF OPERATION",
+      role: "Director of Operation",
+      description: "Coordinating operational activities to deliver seamless services to our valued customers.",
+      image: "/team-operation.jpg",
     },
   ];
 
@@ -41,21 +58,21 @@ const TeamSection = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+        <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-6 mb-12">
           {leaders.map((leader) => (
-            <div key={leader.title} className="group">
+            <div key={leader.name} className="group">
               <div className="relative overflow-hidden rounded-xl mb-4">
                 <img
                   src={leader.image}
-                  alt={leader.title}
-                  className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-300"
+                  alt={leader.name}
+                  className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
-              <h3 className="font-heading text-xl font-semibold text-foreground">
+              <h3 className="font-heading text-lg font-semibold text-foreground">
                 {leader.title}
               </h3>
-              <p className="text-primary text-sm mb-2">{leader.role}</p>
-              <p className="text-muted-foreground text-sm">{leader.description}</p>
+              <p className="text-primary text-sm font-bold mb-1">{leader.name}</p>
+              <p className="text-muted-foreground text-xs">{leader.description}</p>
             </div>
           ))}
         </div>

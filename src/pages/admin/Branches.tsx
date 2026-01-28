@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -26,6 +27,19 @@ import {
     TableRow,
 } from '@/components/ui/table';
 
+// Available permissions for branch managers
+const BRANCH_PERMISSIONS = [
+  { id: 'view_dashboard', label: 'View Dashboard', description: 'Access branch dashboard' },
+  { id: 'manage_borrowers', label: 'Manage Borrowers', description: 'Add, edit, view borrowers' },
+  { id: 'view_loans', label: 'View Loans', description: 'View loan applications' },
+  { id: 'approve_loans', label: 'Approve Loans', description: 'Approve/reject loan applications' },
+  { id: 'manage_repayments', label: 'Manage Repayments', description: 'Record and manage repayments' },
+  { id: 'view_reports', label: 'View Reports', description: 'Access branch reports' },
+  { id: 'manage_staff', label: 'Manage Staff', description: 'Manage branch staff' },
+  { id: 'view_accounts', label: 'View Accounts', description: 'View branch accounts' },
+  { id: 'manage_expenses', label: 'Manage Expenses', description: 'Record and manage expenses' },
+];
+
 interface Branch {
     id: string;
     name: string;
@@ -35,6 +49,7 @@ interface Branch {
     address: string;
     is_active: boolean;
     created_at: string;
+    permissions?: string[];
 }
 
 export default function Branches() {
@@ -51,6 +66,7 @@ export default function Branches() {
         manager: '',
         phone: '',
         address: '',
+        permissions: ['view_dashboard', 'manage_borrowers', 'view_loans', 'manage_repayments', 'view_reports'] as string[],
     });
 
     const filteredBranches = branches.filter(branch =>
@@ -58,6 +74,15 @@ export default function Branches() {
         branch.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         branch.manager?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const handlePermissionToggle = (permissionId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            permissions: prev.permissions.includes(permissionId)
+                ? prev.permissions.filter(p => p !== permissionId)
+                : [...prev.permissions, permissionId]
+        }));
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -91,6 +116,7 @@ export default function Branches() {
             manager: branch.manager || '',
             phone: branch.phone || '',
             address: branch.address || '',
+            permissions: branch.permissions || ['view_dashboard', 'manage_borrowers', 'view_loans', 'manage_repayments', 'view_reports'],
         });
         setDialogOpen(true);
     };
@@ -108,7 +134,7 @@ export default function Branches() {
 
     const resetForm = () => {
         setEditingBranch(null);
-        setFormData({ name: '', code: '', manager: '', phone: '', address: '' });
+        setFormData({ name: '', code: '', manager: '', phone: '', address: '', permissions: ['view_dashboard', 'manage_borrowers', 'view_loans', 'manage_repayments', 'view_reports'] });
     };
 
     if (loading) {
@@ -131,11 +157,11 @@ export default function Branches() {
                             Add Branch
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
+                    <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{editingBranch ? 'Edit Branch' : 'Add Branch'}</DialogTitle>
                             <DialogDescription>
-                                {editingBranch ? 'Update branch details' : 'Add a new branch location'}
+                                {editingBranch ? 'Update branch details and permissions' : 'Add a new branch location and set manager permissions'}
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleSubmit} className="space-y-4 py-4">
@@ -185,6 +211,32 @@ export default function Branches() {
                                     placeholder="Branch address"
                                 />
                             </div>
+
+                            {/* Branch Manager Permissions */}
+                            <div className="space-y-3">
+                                <Label className="text-sm font-medium">Branch Manager Permissions</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Select which features the branch manager can access
+                                </p>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 border rounded-lg bg-muted/30">
+                                    {BRANCH_PERMISSIONS.map((permission) => (
+                                        <div key={permission.id} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`branch-${permission.id}`}
+                                                checked={formData.permissions.includes(permission.id)}
+                                                onCheckedChange={() => handlePermissionToggle(permission.id)}
+                                            />
+                                            <label
+                                                htmlFor={`branch-${permission.id}`}
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                            >
+                                                {permission.label}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
                             <DialogFooter className="pt-4">
                                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                                     Cancel

@@ -22,15 +22,15 @@ const AboutSection = () => {
 
   const locations = [
     {
-      name: "Headquarters - Mbeya",
-      address: "Mafyati, Njia Area",
-      city: "Mbeya, Tanzania",
+      name: "Headquarters - Dar es Salaam",
+      address: "S.L.P 1725",
+      city: "",
       isPrimary: true,
     },
     {
       name: "Branch Office",
-      address: "Branch Office",
-      city: "Dar es Salaam, Tanzania",
+      address: "MBEYA, DODOMA, MWANZA",
+      city: "SONGWE and IRINGA",
       isPrimary: false,
     },
   ];
@@ -61,10 +61,10 @@ const AboutSection = () => {
               </p>
             </div>
 
-            {/* Target Market */}
+            {/* Mass Market */}
             <div>
               <h3 className="font-heading text-xl font-semibold text-foreground mb-4">
-                Target Market
+                Mass Market
               </h3>
               <ul className="space-y-2">
                 {targetMarket.map((item) => (
@@ -80,7 +80,7 @@ const AboutSection = () => {
           {/* Right Column */}
           <div>
             <h3 className="font-heading text-xl font-semibold text-foreground mb-4">
-              Key Features
+              Loan Details
             </h3>
             <div className="space-y-3 mb-8">
               {features.map((feature) => (

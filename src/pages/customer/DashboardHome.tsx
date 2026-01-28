@@ -1387,6 +1387,34 @@ export default function DashboardHome() {
 
               {/* Navigation Buttons */}
               <div className="flex justify-between mt-8 pt-6 border-t">
+                <Button 
+                  variant="outline" 
+                  className="border-red-300 text-red-600 hover:bg-red-50"
+                  onClick={() => {
+                    setShowForm(false);
+                    setCurrentStep(1);
+                    setIsSubmitted(false);
+                    setApplicationRef('');
+                    setFormData({
+                      fullName: profile?.full_name || '',
+                      phone: '',
+                      email: profile?.email || '',
+                      idNumber: '',
+                      birthDate: '',
+                      address: '',
+                      employmentStatus: '',
+                      employer: '',
+                      jobTitle: '',
+                      monthlyIncome: '',
+                      loanAmount: '500000',
+                      durationMonths: '6',
+                      loanPurpose: '',
+                    });
+                    setUploadedFiles([]);
+                  }}
+                >
+                  Ghairi
+                </Button>
                 {currentStep > 1 && (
                   <Button variant="outline" onClick={handlePrevStep}>
                     Rudi Nyuma
