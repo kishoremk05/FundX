@@ -40,6 +40,7 @@ import {
   File,
   Info,
 } from 'lucide-react';
+import Footer from '@/components/layout/Footer';
 
 // Application form steps
 const FORM_STEPS = [
@@ -1387,8 +1388,8 @@ export default function DashboardHome() {
 
               {/* Navigation Buttons */}
               <div className="flex justify-between mt-8 pt-6 border-t">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="border-red-300 text-red-600 hover:bg-red-50"
                   onClick={() => {
                     setShowForm(false);
@@ -1782,87 +1783,7 @@ export default function DashboardHome() {
       <div className="h-20" />
 
       {/* Footer */}
-      <footer className="bg-[#1e3a5f] text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            {/* Logo & Description */}
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold">K</span>
-                </div>
-                <div>
-                  <p className="font-bold">KEP Microcredit</p>
-                  <p className="text-xs text-gray-400">Mikopo ya Haraka</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-400 mb-4">
-                Tunakupa mikopo ya haraka na rahisi kwa wajiri wote kwa ada nafuu sana katika Tanzania.
-              </p>
-              <div className="flex gap-2">
-                <a href="#" className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center hover:bg-blue-700 transition-colors">
-                  <span className="text-xs">&lt;</span>
-                </a>
-                <a href="#" className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center hover:bg-blue-700 transition-colors">
-                  <span className="text-xs">&lt;</span>
-                </a>
-                <a href="#" className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center hover:bg-blue-700 transition-colors">
-                  <span className="text-xs">&lt;</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Quick Links */}
-            <div>
-              <h5 className="font-bold mb-4 text-green-400">Viungo vya Haraka</h5>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white flex items-center gap-2"><ArrowRight className="w-3 h-3" /> Kuhusu Sisi</a></li>
-                <li><a href="#" className="hover:text-white flex items-center gap-2"><ArrowRight className="w-3 h-3" /> Huduma Zetu</a></li>
-                <li><a href="#" className="hover:text-white flex items-center gap-2"><ArrowRight className="w-3 h-3" /> Maswali</a></li>
-                <li><a href="#" className="hover:text-white flex items-center gap-2"><ArrowRight className="w-3 h-3" /> Wasiliana Nasi</a></li>
-              </ul>
-            </div>
-
-            {/* Legal */}
-            <div>
-              <h5 className="font-bold mb-4 text-green-400">Kisheria</h5>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white flex items-center gap-2"><ArrowRight className="w-3 h-3" /> Sera ya Faragha</a></li>
-                <li><a href="#" className="hover:text-white flex items-center gap-2"><ArrowRight className="w-3 h-3" /> Masharti na Hali</a></li>
-                <li><a href="#" className="hover:text-white flex items-center gap-2"><ArrowRight className="w-3 h-3" /> Sera ya Mkopo</a></li>
-              </ul>
-            </div>
-
-            {/* Contact */}
-            <div>
-              <h5 className="font-bold mb-4 text-green-400">Wasiliana Nasi</h5>
-              <ul className="space-y-3 text-sm text-gray-400">
-                <li className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-green-400" />
-                  +255 222 456 789
-                </li>
-                <li className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-green-400" />
-                  info@kepmicrocredit.co.tz
-                </li>
-                <li className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-green-400" />
-                  Dar es Salaam, Tanzania
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Copyright */}
-          <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-400">© 2024 KEP Microcredit Limited. Haki zote zimehifadhiwa.</p>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <CheckCircle className="w-4 h-4 text-green-400" />
-              <span>Leseni ya BOT: MFI-2024-001</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
