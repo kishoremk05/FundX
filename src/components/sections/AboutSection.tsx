@@ -48,7 +48,15 @@ const AboutSection = () => {
               KEP Microcredit Limited is a licensed Tanzanian microfinance institution providing
               accessible financial services to individuals and businesses with limited access to
               traditional banking. We operate as a Tier 2 Microfinance Service Provider under the
-              regulation of the Bank of Tanzania.
+              regulation of the Bank of Tanzania.{" "}
+              <a 
+                href="https://fra.cloud.appwrite.io/v1/storage/buckets/697a13d40022363d79cc/files/About-KEP/view?project=697a047200383024c46b" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary font-semibold hover:underline"
+              >
+                more
+              </a>
             </p>
 
             {/* Mission Box */}
