@@ -30,14 +30,14 @@ const TeamSection = () => {
       title: "DIRECTOR OF FINANCE",
       role: "Director of Finance",
       description: "Managing financial operations and ensuring fiscal responsibility across all departments.",
-      image: "/team-finance.jpg",
+      image: "/dir of finance.webp",
     },
     {
       name: "IBRAHIM JUMA KAJULA",
       title: "DIRECTOR OF OPERATION",
       role: "Director of Operation",
       description: "Coordinating operational activities to deliver seamless services to our valued customers.",
-      image: "/team-operation.jpg",
+      image: "/dir of operation.webp",
     },
   ];
 
