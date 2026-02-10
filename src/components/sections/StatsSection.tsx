@@ -16,7 +16,7 @@ const StatsSection = () => {
     },
     {
       icon: Building,
-      value: "2",
+      value: "6",
       label: "Offices",
       sublabel: "Mbeya & Dar es Salaam",
     },

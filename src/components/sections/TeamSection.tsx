@@ -16,7 +16,7 @@ const TeamSection = () => {
       title: "Managing Director",
       role: "Managing Director",
       description: "Overseeing daily operations and strategic initiatives to ensure excellent service delivery.",
-      image: "/team-md.jpg",
+      image: "/WhatsApp Image 2025-12-19 at 3.06.32 PM (6).jpeg",
     },
     {
       name: "BOAZI SIMONI MWASIPU",

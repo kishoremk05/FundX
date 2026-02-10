@@ -1,7 +1,7 @@
 const ExperienceSection = () => {
   const stats = [
     { value: "15+", label: "Team Members" },
-    { value: "2", label: "Office Locations" },
+    { value: "6", label: "Office Locations" },
     { value: "24hrs", label: "Loan Processing" },
     { value: "100%", label: "Commitment" },
   ];
